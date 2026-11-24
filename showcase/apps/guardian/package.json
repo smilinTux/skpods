@@ -1,0 +1,36 @@
+{
+  "name": "@skpods/guardian",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Guardian: an AI agent with a leash. Showcase app on SKPods.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p . --noEmit",
+    "bridge": "tsx scripts/clinic-bridge.ts",
+    "demo": "tsx scripts/demo.ts",
+    "test:unit": "tsx --test src/lib/policy.test.ts src/lib/chain.test.ts",
+    "e2e": "tsx e2e/story.e2e.ts",
+    "record": "tsx e2e/record.ts"
+  },
+  "dependencies": {
+    "@skpods/solid-web": "*",
+    "@skpods/ui": "*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.20",
+    "playwright": "^1.49.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.23.15",
+    "vite": "^5.4.0"
+  }
+}
