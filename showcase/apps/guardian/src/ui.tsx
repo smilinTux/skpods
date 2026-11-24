@@ -59,7 +59,12 @@ export function Scramble({ text, run = true, ms = 650, className }: { text: stri
       else setOut(text)
     }
     raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
+    // A background tab pauses animation frames: still end on the real value.
+    const done = setTimeout(() => setOut(text), ms + 150)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearTimeout(done)
+    }
   }, [text, run, ms])
   return <span className={className}>{out}</span>
 }

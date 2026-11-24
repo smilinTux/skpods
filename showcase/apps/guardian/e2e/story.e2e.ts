@@ -25,12 +25,12 @@ async function shot(page: Page, name: string) {
 }
 const state = (page: Page, cls: string) => page.locator(`[data-testid=clinic-row-${cls}]`).getAttribute('data-state')
 async function waitState(page: Page, cls: string, want: string, timeout = T) {
-  await page.waitForFunction(([c, w]) => document.querySelector(`[data-testid=clinic-row-${c}]`)?.getAttribute('data-state') === w, [cls, want] as const, { timeout })
+  await page.waitForFunction(([c, w]) => document.querySelector(`[data-testid=clinic-row-${c}]`)?.getAttribute('data-state') === w, [cls, want] as const, { timeout, polling: 250 })
 }
 
 /** Values "decrypt" into place for about a second, so wait for the final text. */
 async function expectText(page: Page, testid: string, sub: string) {
-  await page.waitForFunction(([id, t]) => document.querySelector(`[data-testid=${id}]`)?.textContent?.includes(t), [testid, sub] as const, { timeout: 15_000 }).catch(() => undefined)
+  await page.waitForFunction(([id, t]) => document.querySelector(`[data-testid=${id}]`)?.textContent?.includes(t), [testid, sub] as const, { timeout: 20_000, polling: 250 }).catch(() => undefined)
   const got = await page.locator(`[data-testid=${testid}]`).textContent()
   assert(got?.includes(sub), `${testid} shows "${sub}" (got "${got?.slice(0, 80)}")`)
 }
