@@ -63,6 +63,20 @@ async function goLive(ws: FakeWS) {
   ws.recv({ t: 'ready', webid: ALICE })
 }
 
+const micro = async () => {
+  for (let i = 0; i < 20; i++) await Promise.resolve()
+}
+/** Fake-timer friendly: open, let the auth frame out through microtasks only. */
+async function authSent(ws: FakeWS) {
+  ws.open()
+  await micro()
+  expect(ws.sent.length).toBe(1)
+}
+async function liveFake(ws: FakeWS) {
+  await authSent(ws)
+  ws.recv({ t: 'ready', webid: ALICE })
+}
+
 beforeEach(() => {
   FakeWS.all = []
   auth.mockClear()
@@ -173,12 +187,128 @@ describe('RelayClient', () => {
       vi.advanceTimersByTime(60_000)
     }
     expect(FakeWS.all.length).toBe(12) // the cap holds at 60 s
-    vi.useRealTimers()
-    await goLive(last())
+    await liveFake(last())
     expect(r.state).toBe('live')
     expect(states).toEqual(['connecting', 'down', 'live'])
-    last().drop() // a live socket that drops starts again at 1 s and is "connecting", not down
+    vi.advanceTimersByTime(30_000) // stayed ready 30 s: the backoff resets
+    last().drop() // so a drop now starts again at 1 s and is "connecting", not down
     expect(r.state).toBe('connecting')
+    const n = FakeWS.all.length
+    vi.advanceTimersByTime(1000)
+    expect(FakeWS.all.length).toBe(n + 1)
+    r.close()
+  })
+
+  it('a socket that goes ready and drops within 30 s keeps backing off to the cap', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const r = client()
+    r.join(ROOM, () => {})
+    for (const delay of [1000, 2000, 4000, 8000, 16_000, 32_000, 60_000, 60_000, 60_000]) {
+      await liveFake(last())
+      expect(r.state).toBe('live')
+      vi.advanceTimersByTime(1000)
+      last().drop() // the free limit, a restart, anything: ready did not prove the relay is healthy
+      const n = FakeWS.all.length
+      vi.advanceTimersByTime(delay - 1)
+      expect(FakeWS.all.length, `next dial after ${delay} ms`).toBe(n)
+      vi.advanceTimersByTime(1)
+      expect(FakeWS.all.length).toBe(n + 1)
+    }
+    expect(r.state).toBe('down')
+    r.close()
+  })
+
+  it('close 4401 waits 15 minutes, with one early retry when the token changes', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    let token = 'tok-a'
+    const r = client({ auth: async (htu) => ({ token, proof: 'p:' + htu }) })
+    r.join(ROOM, () => {})
+    await authSent(last())
+    last().drop(4401)
+    expect(r.state).toBe('down')
+    vi.advanceTimersByTime(60_000)
+    await micro()
+    expect(FakeWS.all.length).toBe(1) // same token: no early retry, no 60 s hammering
+    vi.advanceTimersByTime(15 * 60_000 - 60_000 - 1)
+    expect(FakeWS.all.length).toBe(1)
+    vi.advanceTimersByTime(1)
+    expect(FakeWS.all.length).toBe(2)
+    await authSent(last())
+    last().drop(4401)
+    token = 'tok-b' // refreshed or a new login
+    vi.advanceTimersByTime(60_000)
+    await micro()
+    expect(FakeWS.all.length).toBe(3) // one early retry with the new token
+    await authSent(last())
+    expect(last().frames()[0].token).toBe('tok-b')
+    last().drop(4401)
+    token = 'tok-c'
+    vi.advanceTimersByTime(60_000)
+    await micro()
+    expect(FakeWS.all.length).toBe(3) // only once
+    r.close()
+  })
+
+  it('close 4429 waits 15 minutes before dialling again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const r = client()
+    r.join(ROOM, () => {})
+    await liveFake(last())
+    last().drop(4429)
+    expect(r.state).toBe('down')
+    vi.advanceTimersByTime(15 * 60_000 - 1)
+    await micro()
+    expect(FakeWS.all.length).toBe(1)
+    vi.advanceTimersByTime(1)
+    expect(FakeWS.all.length).toBe(2)
+    r.close()
+  })
+
+  it('close 4403 stops the room until it is joined again', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const r = client()
+    const got: ServerPing[] = []
+    r.join(ROOM, (p) => got.push(p))
+    await authSent(last())
+    last().drop(4403)
+    expect(r.state).toBe('down')
+    vi.advanceTimersByTime(24 * 3600_000)
+    expect(FakeWS.all.length).toBe(1)
+    r.join(ROOM, () => {})
+    expect(FakeWS.all.length).toBe(2)
+    await liveFake(last())
+    expect(r.state).toBe('live')
+    const ping = { t: 'ping', from: BOB, kind: 'message', url: 'https://pod.test/bob/m-1.ttl', seq: 1, at: 1 }
+    last().recv(ping)
+    expect(got).toEqual([ping]) // the first listener moved to the new socket
+    r.close()
+  })
+
+  it('closes an attempt that gets no ready within 10 s of open and counts a failure', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const r = client()
+    r.join(ROOM, () => {})
+    const ws = last()
+    await authSent(ws)
+    vi.advanceTimersByTime(9_999)
+    expect(ws.closed).toBe(false)
+    vi.advanceTimersByTime(1)
+    expect(ws.closed).toBe(true)
+    expect(r.state).toBe('connecting')
+    vi.advanceTimersByTime(1000)
+    expect(FakeWS.all.length).toBe(2)
+    r.close()
+  })
+
+  it('drops held pings older than 30 s when the socket becomes ready', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    const r = client()
+    r.join(ROOM, () => {})
+    r.publish(ROOM, 'message', 'https://pod.test/alice/c/m-old.ttl')
+    vi.advanceTimersByTime(31_000)
+    r.publish(ROOM, 'message', 'https://pod.test/alice/c/m-new.ttl')
+    await liveFake(last())
+    expect(last().frames().slice(1)).toEqual([{ t: 'ping', kind: 'message', url: 'https://pod.test/alice/c/m-new.ttl' }])
     r.close()
   })
 
