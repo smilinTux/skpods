@@ -51,6 +51,8 @@ pub struct Broker {
     mirror_tx: mpsc::UnboundedSender<MirrorJob>,
     roots: Mutex<HashMap<String, String>>,
     revoke_backoff: Mutex<HashMap<String, DateTime<Utc>>>,
+    inflight: Mutex<std::collections::HashSet<String>>,
+    revoking: Mutex<std::collections::HashSet<String>>,
 }
 
 impl Broker {
@@ -70,6 +72,8 @@ impl Broker {
             mirror_tx,
             roots: Default::default(),
             revoke_backoff: Default::default(),
+            inflight: Default::default(),
+            revoking: Default::default(),
         });
         tokio::spawn(mirror_worker(b.clone(), mirror_rx));
         tokio::spawn(sweeper(b.clone()));
@@ -95,7 +99,7 @@ impl Broker {
 
     pub async fn load_policy(&self, subject: &str) -> R<Policy> {
         let root = self.storage_root(subject).await;
-        let r = self.solid.get(&Self::policy_url(&root)).await?;
+        let r = self.solid.get_as(&Self::policy_url(&root), "application/ld+json").await?;
         if !r.status.is_success() {
             return Err(BrokerError::NotFound(format!(
                 "no guardian policy readable for this subject (HTTP {}). The person has not set the guardian up.",
@@ -468,6 +472,16 @@ impl Broker {
 
     /// Revoke (or expire) one grant. Idempotent. The ACL is rewritten first-class: on failure the grant stays active and is retried.
     pub async fn revoke(&self, grant_id: &str, expired: bool, reason: &str, actor: &str) -> R<Grant> {
+        if !self.revoking.lock().unwrap().insert(grant_id.to_string()) {
+            // Someone else (the sweeper or the owner) is revoking this grant right now.
+            return self.store.get_grant(grant_id)?.ok_or_else(|| BrokerError::NotFound("grant".into()));
+        }
+        let r = self.revoke_inner(grant_id, expired, reason, actor).await;
+        self.revoking.lock().unwrap().remove(grant_id);
+        r
+    }
+
+    async fn revoke_inner(&self, grant_id: &str, expired: bool, reason: &str, actor: &str) -> R<Grant> {
         let mut g = self.store.get_grant(grant_id)?.ok_or_else(|| BrokerError::NotFound("grant".into()))?;
         if g.status != GrantStatus::Active {
             return Ok(g);
@@ -517,7 +531,7 @@ impl Broker {
             "data_class": g.data_class, "detail": {"http_status": status, "source": if verified {"grantee-reported-authenticated"} else {"grantee-reported-unauthenticated"}}}))?)
     }
 
-    pub async fn sweep_once(&self) {
+    pub async fn sweep_once(self: &Arc<Self>) {
         let due = match self.store.due_grants(now()) {
             Ok(d) => d,
             Err(e) => {
@@ -531,16 +545,23 @@ impl Broker {
                     continue;
                 }
             }
-            match self.revoke(&g.id, true, "expired", "system").await {
-                Ok(_) => {
-                    self.revoke_backoff.lock().unwrap().remove(&g.id);
-                    tracing::info!(grant = %g.id, "expired and revoked");
-                }
-                Err(e) => {
-                    tracing::error!(grant = %g.id, "expiry revoke failed, will retry: {e:?}");
-                    self.revoke_backoff.lock().unwrap().insert(g.id.clone(), now() + Duration::seconds(5));
-                }
+            if !self.inflight.lock().unwrap().insert(g.id.clone()) {
+                continue;
             }
+            let b = self.clone();
+            tokio::spawn(async move {
+                match b.revoke(&g.id, true, "expired", "system").await {
+                    Ok(_) => {
+                        b.revoke_backoff.lock().unwrap().remove(&g.id);
+                        tracing::info!(grant = %g.id, "expired and revoked");
+                    }
+                    Err(e) => {
+                        tracing::error!(grant = %g.id, "expiry revoke failed, will retry: {e:?}");
+                        b.revoke_backoff.lock().unwrap().insert(g.id.clone(), now() + Duration::seconds(5));
+                    }
+                }
+                b.inflight.lock().unwrap().remove(&g.id);
+            });
         }
     }
 

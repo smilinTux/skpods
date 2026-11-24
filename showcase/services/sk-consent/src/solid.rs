@@ -34,6 +34,7 @@ pub struct SolidClient {
     key: SigningKey,
     jwk: Value,
     token: Mutex<Option<Token>>,
+    acl_cache: std::sync::Mutex<std::collections::HashMap<String, String>>,
 }
 
 pub struct Resp {
@@ -73,6 +74,7 @@ impl SolidClient {
             key,
             jwk,
             token: Mutex::new(None),
+            acl_cache: Default::default(),
         })
     }
 
@@ -265,6 +267,10 @@ impl SolidClient {
         self.request(Method::GET, url, None, Some("text/turtle, application/ld+json;q=0.8, */*;q=0.5"), None).await
     }
 
+    pub async fn get_as(&self, url: &str, accept: &str) -> Result<Resp> {
+        self.request(Method::GET, url, None, Some(accept), None).await
+    }
+
     pub async fn put(&self, url: &str, content_type: &str, body: String) -> Result<Resp> {
         let r = self.request(Method::PUT, url, Some(content_type), None, Some(body)).await?;
         if !r.status.is_success() {
@@ -284,14 +290,21 @@ impl SolidClient {
 
     /// Find the `.acl` URL of a resource from its Link rel="acl" header (HEAD, then GET, then convention).
     pub async fn acl_url(&self, resource: &str) -> Result<String> {
+        if let Some(u) = self.acl_cache.lock().unwrap().get(resource) {
+            return Ok(u.clone());
+        }
+        let mut found = None;
         for m in [Method::HEAD, Method::GET] {
             if let Ok(r) = self.request(m, resource, None, Some("text/turtle"), None).await {
                 if let Some(u) = acl_from_link(&r.headers, resource) {
-                    return Ok(u);
+                    found = Some(u);
+                    break;
                 }
             }
         }
-        Ok(format!("{}.acl", resource.trim_end_matches('/')) + if resource.ends_with('/') { "" } else { "" })
+        let u = found.unwrap_or_else(|| format!("{}.acl", resource.trim_end_matches('/')));
+        self.acl_cache.lock().unwrap().insert(resource.to_string(), u.clone());
+        Ok(u)
     }
 
     pub async fn read_acl(&self, resource: &str) -> Result<Option<String>> {
