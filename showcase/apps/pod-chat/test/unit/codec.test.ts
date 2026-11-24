@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   classify, compareIds, decodeConversation, decodeEdit, decodeInvitation, decodeLeft, decodeMessages, editFile, encodeConversation, encodeEdit, encodeInvitation,
-  encodeLeft, encodeMessage, encodeSegment, idTime, listChildren, messageFile, newMessageId, receiptFile, segmentFile,
+  encodeLeft, encodeMessage, encodeSegment, idTime, listChildren, messageFile, newMessageId, newRelayRoom, receiptFile, segmentFile,
 } from '../../src/lib/codec'
 
 const ME = 'https://pod.test/apps/solid/~dw-alice/profile/card#me'
@@ -58,5 +58,24 @@ describe('turtle codec', () => {
     const c = 'https://pod.test/x/chat/c-1/'
     const ttl = `@prefix ldp: <http://www.w3.org/ns/ldp#> .\n<${c}> ldp:contains <${c}m-1.ttl>, <${c}.acl>, <m-2.ttl> .`
     expect(listChildren(ttl, c)).toEqual([`${c}m-1.ttl`, `${c}m-2.ttl`])
+  })
+})
+
+describe('relay room', () => {
+  const CONV = 'https://pod.test/apps/solid/~dw-alice/storage/skpods/v1/chat/c-1/conversation.ttl'
+  const base = { id: 'c-1', title: 'T', kind: 'group' as const, creator: ME, participants: [ME], createdAt: 1_732_400_000_000 }
+  it('round-trips relayRoom', () => {
+    const relayRoom = '0123456789abcdef0123456789abcdef'
+    expect(decodeConversation(encodeConversation(CONV, { ...base, relayRoom }), CONV)?.relayRoom).toBe(relayRoom)
+  })
+  it('decodes legacy descriptor without relayRoom', () => {
+    const d = decodeConversation(encodeConversation(CONV, base), CONV)
+    expect(d).toBeDefined()
+    expect(d?.relayRoom).toBeUndefined()
+  })
+  it('newRelayRoom is 32 lowercase hex', () => {
+    const a = newRelayRoom()
+    expect(a).toMatch(/^[0-9a-f]{32}$/)
+    expect(newRelayRoom()).not.toBe(a)
   })
 })

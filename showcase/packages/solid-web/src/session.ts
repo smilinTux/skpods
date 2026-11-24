@@ -5,6 +5,7 @@ import { decodeJwt, generateDpopKey, pickDpopAlg, randomString, sha256b64url, ty
 import { discover, OidcError, registerClient, tokenRequest, type OidcConfig, type RegisteredClient, type TokenResponse } from './oidc'
 import { defaultKV, safeLocal, safeSession, type KV } from './storage'
 import { fetchProfileIssuer } from './profile'
+import { makeRelayAuth, type RelayAuth } from './relay-auth'
 
 export type SessionState = 'anonymous' | 'active' | 'expired'
 
@@ -98,6 +99,12 @@ export class SolidSession {
     })
     this.dpopFetchCache = { p, f }
     return f
+  }
+
+  /** Credentials for a relay auth frame. Refreshes first if the token has under 60 s left. Throws if anonymous. */
+  relayAuth: RelayAuth = (htu) => {
+    if (!this.p) return Promise.reject(new Error('Not logged in'))
+    return makeRelayAuth(this.p.key, () => this.accessToken())(htu)
   }
 
   private async accessToken(): Promise<string> {

@@ -1,6 +1,7 @@
 // Node-side helpers for tests and services: client-credentials login for an agent, plus minting credentials.
 import { createDpopFetch } from './dpop-fetch'
 import { decodeJwt, generateDpopKey, pickDpopAlg, type DpopAlg, type DpopKey } from './crypto'
+import { makeRelayAuth, type RelayAuth } from './relay-auth'
 import { discover, tokenRequest, OidcError, type OidcConfig } from './oidc'
 
 export interface ClientCredentials {
@@ -105,4 +106,9 @@ export async function agentLogin(opts: {
     fetchImpl: f,
   })
   return { fetch: authed, webId, issuer: conf.issuer, config: conf, key, refresh, accessToken: () => token }
+}
+
+/** Relay credentials for an agent session. The token is read at call time, so refreshes are picked up. */
+export function relayAuthFromAgent(a: AgentSession): RelayAuth {
+  return makeRelayAuth(a.key, () => a.accessToken())
 }
