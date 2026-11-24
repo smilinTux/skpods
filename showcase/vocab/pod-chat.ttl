@@ -1,0 +1,28 @@
+# Pod Chat vocabulary (showcase app apps/pod-chat). Reuses schema.org (Message, text, author, dateCreated,
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+# dateModified, image, ImageObject, encodingFormat) and dcterms first. Only what those lack is defined here.
+@prefix skp:     <https://w3id.org/skpods/v1#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix schema:  <http://schema.org/> .
+
+skp:Conversation a rdfs:Class ; rdfs:label "Conversation"@en ;
+    rdfs:comment "Descriptor of a chat: title, kind and the WebIDs of its participants. The creator writes it and every participant mirrors it in their own pod."@en .
+skp:participant a rdf:Property ; rdfs:label "participant"@en ; rdfs:domain skp:Conversation ;
+    rdfs:comment "WebID of a person taking part in the conversation."@en .
+skp:kind a rdf:Property ; rdfs:label "kind"@en ; rdfs:domain skp:Conversation ;
+    rdfs:comment "Literal 'direct' (two people) or 'group'."@en .
+skp:MessageEdit a rdfs:Class ; rdfs:label "Message edit"@en ;
+    rdfs:comment "A new resource that replaces the text of an earlier message by the same author. The newest edit wins. Edits are new files because the engine has no ETag, so readers detect them by listing."@en .
+skp:edits a rdf:Property ; rdfs:label "edits"@en ; rdfs:domain skp:MessageEdit ;
+    rdfs:comment "Identifier (schema:identifier) of the message this edit replaces."@en .
+skp:ReadReceipt a rdfs:Class ; rdfs:label "Read receipt"@en ;
+    rdfs:comment "Tiny resource in the reader's own pod: the reader has seen the conversation up to skp:readUpTo."@en .
+skp:readUpTo a rdf:Property ; rdfs:label "read up to"@en ; rdfs:domain skp:ReadReceipt ;
+    rdfs:comment "Identifier of the newest message the reader has seen."@en .
+skp:LeaveNotice a rdfs:Class ; rdfs:label "Leave notice"@en ;
+    rdfs:comment "Written by a participant who left. It is the only resource of theirs that the others can still read: the message access is revoked."@en .
+skp:ChatInvitation a rdfs:Class ; rdfs:label "Chat invitation"@en ;
+    rdfs:comment "Appended to the invitee's chat inbox (Append-only for others). Points at the descriptor in the creator's pod."@en .
+skp:conversation a rdf:Property ; rdfs:label "conversation"@en ; rdfs:domain skp:ChatInvitation ;
+    rdfs:comment "IRI of the conversation descriptor document the invitation is for."@en .
