@@ -1,0 +1,67 @@
+# SKPods consent and guardian vocabulary (DRAFT). Namespace is provisional.
+# Reuses schema.org, FOAF, WAC and dcterms. Only what those lack is defined here.
+@prefix skp:     <https://w3id.org/skpods/v1#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix schema:  <http://schema.org/> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix acl:     <http://www.w3.org/ns/auth/acl#> .
+
+<https://w3id.org/skpods/v1> a owl:Ontology ;
+    rdfs:label "SKPods consent vocabulary v1"@en ;
+    owl:versionInfo "draft" .
+
+# ---- Classes ----
+skp:ConsentRequest a rdfs:Class ; rdfs:label "Consent request"@en ;
+    rdfs:comment "A request by a business or person to read some of the subject's data for a purpose and a time."@en .
+skp:ConsentGrant a rdfs:Class ; rdfs:label "Consent grant"@en ;
+    rdfs:comment "A time-limited read grant written by the consent broker. The broker removes it at skp:validUntil."@en .
+skp:ProviderLink a rdfs:Class ; rdfs:label "Provider link"@en ;
+    rdfs:comment "A standing relationship between a person and a provider (clinic, practitioner, business)."@en .
+skp:HealthRecord a rdfs:Class ; rdfs:label "Health record"@en ;
+    rdfs:comment "A small personal record (date of birth, allergies, medications, insurance member ID, SSN) shared only through consent. Demo data is fake."@en .
+skp:GuardianPolicy a rdfs:Class ; rdfs:label "Guardian policy"@en ;
+    rdfs:comment "The rules a person's guardian agent decides by. Stored as JSON-LD at /skpods/v1/consents/policy.jsonld."@en .
+skp:Status a rdfs:Class ; rdfs:label "Status"@en .
+skp:Pending a skp:Status ; rdfs:label "Pending"@en .
+skp:Granted a skp:Status ; rdfs:label "Granted"@en .
+skp:Denied a skp:Status ; rdfs:label "Denied"@en .
+skp:Revoked a skp:Status ; rdfs:label "Revoked"@en .
+skp:Expired a skp:Status ; rdfs:label "Expired"@en .
+skp:Active a skp:Status ; rdfs:label "Active"@en .
+
+# ---- Properties: requests and grants ----
+skp:requester a rdf:Property ; rdfs:domain skp:ConsentRequest ; rdfs:range foaf:Agent ; rdfs:comment "WebID asking for access."@en .
+skp:subject a rdf:Property ; rdfs:comment "WebID of the person the data is about."@en .
+skp:purpose a rdf:Property ; rdfs:domain skp:ConsentRequest ; rdfs:range xsd:string ; rdfs:comment "Plain-language purpose shown to the person."@en .
+skp:requestedDuration a rdf:Property ; rdfs:domain skp:ConsentRequest ; rdfs:range xsd:duration .
+skp:bookingReference a rdf:Property ; rdfs:domain skp:ConsentRequest ; rdfs:range xsd:string ; rdfs:comment "Booking reference the requester cites as context."@en .
+skp:item a rdf:Property ; rdfs:domain skp:ConsentRequest ; rdfs:comment "One requested data item with its decision (blank node)."@en .
+skp:dataClass a rdf:Property ; rdfs:range xsd:string ; rdfs:comment "Kind of data, for example dob, allergies, medications, insurance_member_id, ssn."@en .
+skp:resource a rdf:Property ; rdfs:range rdfs:Resource ; rdfs:comment "Resource the request, item or grant covers."@en .
+skp:mode a rdf:Property ; rdfs:range acl:Mode ; rdfs:comment "WAC access mode. The broker only issues acl:Read."@en .
+skp:status a rdf:Property ; rdfs:range skp:Status .
+skp:decidedBy a rdf:Property ; rdfs:range xsd:string ; rdfs:comment "guardian or owner."@en .
+skp:reason a rdf:Property ; rdfs:range xsd:string ; rdfs:comment "Deterministic reason from the rules or the owner."@en .
+skp:ruleId a rdf:Property ; rdfs:range xsd:string ; rdfs:comment "Id of the policy rule that decided."@en .
+skp:grantedTo a rdf:Property ; rdfs:domain skp:ConsentGrant ; rdfs:range foaf:Agent .
+skp:request a rdf:Property ; rdfs:domain skp:ConsentGrant ; rdfs:range skp:ConsentRequest .
+skp:approver a rdf:Property ; rdfs:domain skp:ConsentGrant ; rdfs:comment "Who approved: a WebID (the owner) or the literal guardian."@en .
+skp:validFrom a rdf:Property ; rdfs:range xsd:dateTime .
+skp:validUntil a rdf:Property ; rdfs:range xsd:dateTime ; rdfs:comment "End of validity; the broker revokes at this time."@en .
+skp:revokedAt a rdf:Property ; rdfs:domain skp:ConsentGrant ; rdfs:range xsd:dateTime .
+skp:auditRef a rdf:Property ; rdfs:range rdfs:Resource ; rdfs:comment "IRI of the audit entry (file#seq) that recorded the grant."@en .
+
+# ---- Properties: providers and health records ----
+skp:client a rdf:Property ; rdfs:domain skp:ProviderLink ; rdfs:range foaf:Agent .
+skp:provider a rdf:Property ; rdfs:domain skp:ProviderLink ; rdfs:range foaf:Agent .
+skp:since a rdf:Property ; rdfs:range xsd:dateTime .
+skp:allergen a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:string .
+skp:medication a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:string .
+skp:insurer a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:string .
+skp:memberId a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:string .
+skp:ssn a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:string ; rdfs:comment "Never shared by the guardian. Demo value is not a valid number."@en .
+skp:neverShare a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:boolean .
+# Bookings use schema:Reservation (schema:identifier, provider, underName, startTime, endTime, reservationStatus).
