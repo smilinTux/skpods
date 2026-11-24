@@ -4,7 +4,9 @@ This is the contract between Pod Chat clients and the optional SKPods relay. Mes
 only in the authors' pods. The relay carries small hints that something changed, nothing more. With the relay down,
 Pod Chat behaves exactly as it does without one (polling).
 
-Frame examples for both sides to test against live in `showcase/apps/pod-chat/protocol/relay-v1.fixtures.json`.
+Frame examples for both sides to test against live in `showcase/apps/pod-chat/protocol/relay-v1.fixtures.json`. Each
+fixture is `{name, direction, frame, valid}`. Error fixtures and invalid client fixtures also carry an optional
+`"close": <int>`, the close code the relay must use for that frame.
 
 ## 1. Pod layout
 
@@ -104,11 +106,34 @@ Client frames must not contain `from`, `seq` or `at`; the relay sets them. The `
 
 A room holds at most 50 members.
 
+### Which code for which failure
+
+The size limit is measured in UTF-8 bytes of the whole text frame. Every error is followed by a close with the
+matching close code.
+
+| Case | Error code |
+|---|---|
+| Frame over 4096 UTF-8 bytes | `too_large` 4413 |
+| No `auth` frame within 5 s | `auth_failed` 4401 |
+| Auth fails verification (expired token, stale or reused proof, wrong key, issuer not in profile, mailbox `w` mismatch) | `auth_failed` 4401 |
+| Non-JSON or binary frame | `bad_frame` 4400 |
+| Unknown `t` | `bad_frame` 4400 |
+| First frame is not `auth` | `bad_frame` 4400 |
+| `auth` with a `v` other than 1 | `bad_frame` 4400 |
+| `ping` with an unknown `kind` | `bad_frame` 4400 |
+| `ping` with a `url` that is not `https` | `bad_frame` 4400 |
+| Client frame carrying `from`, `seq` or `at` | `bad_frame` 4400 |
+| `ping` or `typing` sent on `/v1/me` (the mailbox only receives) | `bad_frame` 4400 |
+| Room already has 50 members | `room_full` 4403 |
+| Too many frames too fast | `rate_limited` 4429 |
+
+An `auth` frame that is not the first frame, or a second `auth`, is also `bad_frame`.
+
 ## 4. Trust rules
 
 * A ping is a hint. A client that gets one re-reads the pod it points at and trusts only what the pod returns.
 * The relay sets `from` from the verified WebID. It never trusts a claimed WebID, and a client frame that carries
-  `from` is a `bad_frame`.
+  `from` is a `bad_frame` 4400.
 * Clients ignore pings whose `from` is not a participant of the conversation.
 * The relay never receives message bodies, file contents or titles. It never logs access tokens, proofs or ping URLs.
 * A room id is a capability stored only in the descriptor, which only participants can read. Someone who learns one

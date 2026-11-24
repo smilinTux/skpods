@@ -19,7 +19,8 @@
       "token": "eyJhbGciOiJFUzI1NiJ9.eyJzdWIiOiJ4In0.sig",
       "proof": "eyJ0eXAiOiJkcG9wK2p3dCJ9.eyJodG0iOiJHRVQifQ.sig"
     },
-    "valid": false
+    "valid": false,
+    "close": 4400
   },
   {
     "name": "ready ok",
@@ -48,7 +49,8 @@
       "kind": "reaction",
       "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
     },
-    "valid": false
+    "valid": false,
+    "close": 4400
   },
   {
     "name": "ping http url",
@@ -58,7 +60,8 @@
       "kind": "message",
       "url": "http://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
     },
-    "valid": false
+    "valid": false,
+    "close": 4400
   },
   {
     "name": "ping with from set by client",
@@ -69,7 +72,8 @@
       "kind": "message",
       "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
     },
-    "valid": false
+    "valid": false,
+    "close": 4400
   },
   {
     "name": "ping relayed ok",
@@ -126,7 +130,8 @@
       "t": "error",
       "code": "room_full"
     },
-    "valid": true
+    "valid": true,
+    "close": 4403
   },
   {
     "name": "oversize ping",
@@ -136,6 +141,119 @@
       "kind": "message",
       "url": "https://alice.pods.example/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
-    "valid": false
+    "valid": false,
+    "close": 4413
+  },
+  {
+    "name": "ping edit ok",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "edit",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
+    },
+    "valid": true
+  },
+  {
+    "name": "ping delete ok",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "delete",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
+    },
+    "valid": true
+  },
+  {
+    "name": "ping receipt ok",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "receipt",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
+    },
+    "valid": true
+  },
+  {
+    "name": "ping join ok",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "join",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
+    },
+    "valid": true
+  },
+  {
+    "name": "ping leave ok",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "leave",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
+    },
+    "valid": true
+  },
+  {
+    "name": "ping archive ok",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "archive",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl"
+    },
+    "valid": true
+  },
+  {
+    "name": "ping with seq set by client",
+    "direction": "client",
+    "frame": {
+      "t": "ping",
+      "kind": "message",
+      "url": "https://alice.pods.example/skpods/v1/chat/c-ab12/m-1732449600000-x9k2.ttl",
+      "seq": 1
+    },
+    "valid": false,
+    "close": 4400
+  },
+  {
+    "name": "error auth_failed",
+    "direction": "server",
+    "frame": {
+      "t": "error",
+      "code": "auth_failed"
+    },
+    "valid": true,
+    "close": 4401
+  },
+  {
+    "name": "error too_large",
+    "direction": "server",
+    "frame": {
+      "t": "error",
+      "code": "too_large"
+    },
+    "valid": true,
+    "close": 4413
+  },
+  {
+    "name": "error rate_limited",
+    "direction": "server",
+    "frame": {
+      "t": "error",
+      "code": "rate_limited"
+    },
+    "valid": true,
+    "close": 4429
+  },
+  {
+    "name": "error bad_frame",
+    "direction": "server",
+    "frame": {
+      "t": "error",
+      "code": "bad_frame"
+    },
+    "valid": true,
+    "close": 4400
   }
 ]
