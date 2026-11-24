@@ -1,6 +1,9 @@
 import { Avatar, ConsentChip, Countdown, Spinner, cx } from '@skpods/ui'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CLASS_LABEL, CLINIC_NAME } from '../config'
+
+const SHORT: Record<string, string> = { insurance_member_id: 'Insurance ID', medications: 'Medications', ssn: 'SSN' }
+const short = (c: string) => SHORT[c] ?? CLASS_LABEL[c] ?? c
 import { clock, humanSeconds } from '../lib/format'
 import { entriesFor, narrate, type Line } from '../lib/narrate'
 import type { ConsentRequest, Item } from '../lib/types'
@@ -84,13 +87,17 @@ function Feed() {
   const grantedByGuardian = scene?.items.filter((i) => i.decision.decided_by === 'guardian' && ['granted', 'revoked', 'expired'].includes(i.status)) ?? []
   const deniedByGuardian = scene?.items.filter((i) => i.status === 'denied' && i.decision.decided_by === 'guardian') ?? []
   const asked = scene?.items.filter((i) => i.decision.action === 'ask_owner' || i.decision.recommendation) ?? []
+  const pending = scene?.items.filter((i) => i.status === 'awaiting_owner') ?? []
   const events = entriesFor(audit, g.sceneId)
   const revokes = events.filter((e) => e.event === 'revoke' && e.actor === g.webId)
   const revokeMsg = revokes.length > 0 && grantedOrRevoked(scene)
   const key = `${scene?.id}:${scene?.items.map((i) => i.status).join('')}:${revokes.length}`
+  const topRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    lastRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [key])
+    // A question for Alice always comes to the top; otherwise follow the newest message.
+    if (pending.length) topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    else lastRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!scene) {
     return (
@@ -103,6 +110,7 @@ function Feed() {
   }
   return (
     <div className="space-y-4 px-4 py-4" data-testid="feed">
+      <div ref={topRef} className="space-y-3 scroll-mt-2">{pending.map((i) => <ApprovalCard key={i.id} req={scene} item={i} />)}</div>
       <Bubble>
         <p className="text-sm"><span className="font-semibold">{scene.requester.name}</span> asked for <b>{scene.items.length} things</b> before your visit.</p>
         <p className="mt-0.5 text-xs text-muted">{scene.purpose} · {clock(scene.created)}</p>
@@ -115,11 +123,9 @@ function Feed() {
           {grantedByGuardian[0].decision.explanation && <p className="mt-1.5 text-xs italic text-ink/80">{grantedByGuardian[0].decision.explanation}</p>}
         </Bubble>
       )}
-      {asked.map((i) => (
+      {asked.filter((i) => i.status !== 'awaiting_owner').map((i) => (
         <div key={i.id}>
-          {i.status === 'awaiting_owner' ? (
-            <ApprovalCard req={scene} item={i} />
-          ) : (
+          {(
             <Bubble tone={i.status === 'denied' ? 'bad' : 'good'} className="animate-fade-up">
               <p className="text-sm">
                 You {i.decision.decided_by === 'owner' && i.status === 'denied' ? <b>declined</b> : <b>approved</b>} <b>{CLASS_LABEL[i.data_class] ?? i.label}</b>
@@ -173,8 +179,8 @@ function Access() {
               <li key={x.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 px-3 py-2.5 animate-fade-up" data-testid="active-grant">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand"><UnlockIcon size={16} /></span>
                 <div className="min-w-0 flex-1 leading-tight">
-                  <p className="truncate text-sm font-semibold">{CLASS_LABEL[x.data_class] ?? x.data_class}</p>
-                  <p className="truncate text-[11px] text-muted">{x.grantee_name} · read only</p>
+                  <p className="truncate text-sm font-semibold">{short(x.data_class)}</p>
+                  <p className="truncate text-[11px] text-muted">{x.grantee_name.split(' ')[0]} · read only</p>
                 </div>
                 <div className="text-right"><Countdown until={x.ends} from={x.starts} className="items-end" /></div>
                 <button type="button" aria-label={`Revoke ${CLASS_LABEL[x.data_class] ?? x.data_class}`} onClick={() => g.revokeGrant(x.id)} disabled={g.busy[`revoke:${x.id}`]} className="rounded-lg border border-danger/30 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger/10">End</button>
@@ -213,6 +219,7 @@ export function PhonePanel({ tab, setTab, className }: { tab: PhoneTab; setTab: 
   const activeCount = g.activeGrants.length
 
   useEffect(() => {
+    if (waiting.length === 0) setBanner(undefined)
     for (const i of waiting) {
       if (seen.current.has(i.id)) continue
       seen.current.add(i.id)

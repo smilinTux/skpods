@@ -200,8 +200,8 @@ export function usePresenter(g: Guardian, stage: StageControls) {
         setSt((s) => ({ ...s, cursor: { x, y, tap: (s.cursor?.tap ?? 0) + 1 } }))
         await wait(260)
         el.click()
-        await wait(700)
-        setSt((s) => ({ ...s, cursor: s.cursor ? { ...s.cursor, x: x + 80, y: y + 60 } : undefined }))
+        await wait(600)
+        setSt((s) => ({ ...s, cursor: undefined }))
       },
     }
     try {

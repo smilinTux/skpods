@@ -152,7 +152,8 @@ export function ThinkingPanel({ className }: { className?: string }) {
 
   const now = useNow(2000)
   const lastWithItem = [...events].reverse().find((e) => e.item)
-  const focusId = lastWithItem?.item as string | undefined
+  // Attention goes to the item that is waiting for Alice, otherwise to the item the latest event touched.
+  const focusId = (items.find((i) => i.status === 'awaiting_owner')?.id ?? lastWithItem?.item) as string | undefined
   const fresh = Boolean(lastWithItem && now - new Date(lastWithItem.ts).getTime() < 7000)
   const policy = sceneId ? snapshots[sceneId] : undefined
   useEffect(() => {

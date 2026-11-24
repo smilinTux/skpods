@@ -26,6 +26,22 @@ const upsertBy = <T,>(list: T[], item: T, key: (t: T) => string): T[] => {
   return next
 }
 
+/**
+ * Revoking deletes a per-resource .acl on the pod. pods-dev occasionally answers such a DELETE with a 500 when several
+ * are in flight in one container (seen once with four parallel revokes); the grant then stays active. Retrying works,
+ * and access is never reported as ended until the service says so.
+ */
+async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
+  for (let a = 1; ; a++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (a >= tries) throw e
+      await new Promise((r) => setTimeout(r, 600 * a))
+    }
+  }
+}
+
 const BASE_KEY = 'guardian:baseline'
 const readBaseline = () => {
   try {
@@ -140,7 +156,7 @@ export function useGuardianState(session: SolidSession) {
   // Policy as it was when the request came in (for replaying the decision as a trace).
   useEffect(() => {
     if (!sceneId || snapshots[sceneId]) return
-    broker.policy().then((p) => setSnapshots((s) => (s[sceneId] ? s : { ...s, [sceneId]: p }))).catch(() => undefined)
+    broker.policy().then((p) => setSnapshots((s) => (s[sceneId] ? s : { ...s, [sceneId]: p }))).catch((e) => console.warn('policy snapshot failed', e))
   }, [sceneId, broker, snapshots])
 
   const sceneGrants = useMemo(() => grants.filter((g) => g.request_id === sceneId), [grants, sceneId])
@@ -234,7 +250,7 @@ export function useGuardianState(session: SolidSession) {
   const revokeGrant = useCallback(
     (id: string, reason = 'revoked-by-owner') =>
       guard(`revoke:${id}`, async () => {
-        const g = await broker.revoke(id, reason)
+        const g = await withRetry(() => broker.revoke(id, reason))
         setGrants((l) => upsertBy(l, g, (x) => x.id))
         return g
       }),
@@ -244,12 +260,13 @@ export function useGuardianState(session: SolidSession) {
   const revokeAll = useCallback(
     (reason = 'revoke-everything') =>
       guard('revokeAll', async () => {
-        const live = grants.filter((g) => g.status === 'active')
-        const done = await Promise.all(live.map((g) => broker.revoke(g.id, reason).catch(() => undefined)))
+        // Ask the service, not the local copy: the list may not have loaded yet or may miss an event.
+        const live = (await broker.grants()).filter((g) => g.status === 'active')
+        const done = await Promise.all(live.map((g) => withRetry(() => broker.revoke(g.id, reason)).catch(() => undefined)))
         setGrants((l) => done.reduce<Grant[]>((acc, g) => (g ? upsertBy(acc, g, (x) => x.id) : acc), l))
         return done.filter(Boolean).length
       }),
-    [broker, grants],
+    [broker],
   )
 
   /** Clear the stage for a replay: end old grants, forget the old scene (the audit chain keeps everything). */
@@ -258,10 +275,10 @@ export function useGuardianState(session: SolidSession) {
     setReads({})
     setChain({ state: 'idle' })
     setDecideMs(undefined)
-    const live = grants.filter((g) => g.status === 'active')
-    await Promise.all(live.map((g) => broker.revoke(g.id, 'scenario-reset').catch(() => undefined)))
+    const live = (await broker.grants().catch(() => [] as Grant[])).filter((g) => g.status === 'active')
+    await Promise.all(live.map((g) => withRetry(() => broker.revoke(g.id, 'scenario-reset')).catch(() => undefined)))
     await loadAll().catch(() => undefined)
-  }, [grants, broker, loadAll])
+  }, [broker, loadAll])
 
   const verify = useCallback(async () => {
     setChain({ state: 'checking' })

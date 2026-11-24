@@ -1,4 +1,4 @@
-import { NS, PodStore, SolidSession, one } from '@skpods/solid-web'
+import { SolidSession } from '@skpods/solid-web'
 import { AppShell, Button, Card, Skeleton, ToastProvider, useToast, type NavItem } from '@skpods/ui'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { POD_ISSUER } from './config'
@@ -41,7 +41,6 @@ function Signed({ session }: { session: SolidSession }) {
   const [centerTab, setCenterTab] = useState<'think' | 'chain'>('think')
   const [phoneTab, setPhoneTab] = useState<PhoneTab>('feed')
   const [chainCmd, setChainCmd] = useState<ChainCmd>()
-  const [name, setName] = useState<string>()
 
   const setRoute = useCallback((r: Route) => {
     setRouteState(r)
@@ -52,9 +51,6 @@ function Signed({ session }: { session: SolidSession }) {
     addEventListener('hashchange', h)
     return () => removeEventListener('hashchange', h)
   }, [])
-  useEffect(() => {
-    g.store.profile(g.webId).then((p) => setName(one(p, g.webId, NS.foaf + 'name'))).catch(() => undefined)
-  }, [g.store, g.webId])
 
   const stage: StageControls = useMemo(
     () => ({ setRoute, setPhoneTab, setCenterTab, runChain: (kind) => setChainCmd((c) => ({ id: (c?.id ?? 0) + 1, kind })) }),
@@ -111,7 +107,7 @@ function Signed({ session }: { session: SolidSession }) {
         nav={nav}
         activeNav={route}
         onNav={(id) => setRoute(id as Route)}
-        user={{ name: name ?? 'Alice', webId: g.webId }}
+        user={{ name: 'Alice Rivera', webId: g.webId }}
         onLogout={() => session.logout()}
         widthClass="max-w-[1640px]"
         actions={

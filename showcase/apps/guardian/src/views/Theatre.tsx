@@ -37,7 +37,7 @@ export function Theatre(p: TheatreProps) {
     <div className="stage" data-testid="theatre">
       {g.brokerError && (
         <div className="mb-4">
-          <ErrorState title="The guardian service is not reachable" error={`${g.brokerError} Start it with: cd showcase/apps/guardian && npm run demo:stack (see the README).`} />
+          <ErrorState title="Cannot talk to the guardian service" error={`${g.brokerError} If it is not running, start it as described in the app README (npm run stack).`} />
         </div>
       )}
       {g.error && !g.brokerError && (
