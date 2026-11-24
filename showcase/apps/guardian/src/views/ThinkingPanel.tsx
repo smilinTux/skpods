@@ -40,12 +40,13 @@ function factsFor(req: ConsentRequest, g: ReturnType<typeof useGuardian>): { fac
   return { facts: { requesterInProviders: Boolean(p), hasBooking: bookingOk }, providerName: p?.name, booking: bookingOk ? b : undefined }
 }
 
-function ItemCard({ req, item, policy, open, onToggle, events, focused }: { req: ConsentRequest; item: Item; policy?: Policy; open: boolean; onToggle: () => void; events: AuditEntry[]; focused: boolean }) {
+function ItemCard({ req, item, policy, open, onToggle, events, focused, final }: { req: ConsentRequest; item: Item; policy?: Policy; open: boolean; onToggle: () => void; events: AuditEntry[]; focused: boolean; final: boolean }) {
   const g = useGuardian()
   const { facts, providerName, booking } = factsFor(req, g)
   const requestedS = parseDuration(req.requested_duration)
   const tr: Trace | undefined = useMemo(() => (policy ? trace(policy, item.data_class, req.requester.kind, facts, requestedS) : undefined), [policy, item.data_class, req.requester.kind, facts.requesterInProviders, facts.hasBooking, requestedS]) // eslint-disable-line react-hooks/exhaustive-deps
-  const agrees = !tr || (tr.decision.ruleId ?? undefined) === (item.decision.rule_id ?? undefined)
+  // While the request is still being decided the item comes from audit entries, which carry no rule id: nothing to compare yet.
+  const agrees = !tr || !final || (tr.decision.ruleId ?? undefined) === (item.decision.rule_id ?? undefined)
   const out = outcomeOf(item)
   const who = { clinic: req.requester.name, owner: g.webId }
   const follow = events.filter((e) => ['grant_written', 'data_read', 'revoke', 'expiry', 'revoke_verified', 'grant_failed'].includes(e.event) || (e.event === 'decision' && (e.detail as { decided_by?: string } | undefined)?.decided_by === 'owner'))
@@ -64,7 +65,7 @@ function ItemCard({ req, item, policy, open, onToggle, events, focused }: { req:
         </span>
         <div className="min-w-[8rem] flex-1 leading-tight">
           <p className="truncate text-sm font-semibold">{CLASS_LABEL[item.data_class] ?? item.label}</p>
-          <p className="truncate font-mono text-[11px] text-muted">{item.decision.rule_id ?? 'no rule matched'}</p>
+          <p className="truncate font-mono text-[11px] text-muted">{item.decision.rule_id ?? (final ? 'no rule matched' : tr?.matched?.id ?? 'reading the rules...')}</p>
         </div>
         <Pill tone={TONE_PILL[out.tone]} className="shrink-0" >{out.label}</Pill>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={cx('shrink-0 text-muted transition-transform', open && 'rotate-180')} aria-hidden><path d="M6 9l6 6 6-6" /></svg>
@@ -200,7 +201,7 @@ export function ThinkingPanel({ className }: { className?: string }) {
           const open = toggled[it.id] ?? (isFocus || it.status === 'awaiting_owner')
           return (
             <div key={it.id} ref={(el) => (refs.current[it.id] = el)}>
-              <ItemCard req={reqView} item={it} policy={policy} open={open} focused={isFocus && fresh} events={itEvents} onToggle={() => setToggled((t) => ({ ...t, [it.id]: !open }))} />
+              <ItemCard req={reqView} item={it} policy={policy} open={open} focused={isFocus && fresh} final={Boolean(current)} events={itEvents} onToggle={() => setToggled((t) => ({ ...t, [it.id]: !open }))} />
             </div>
           )
         })}

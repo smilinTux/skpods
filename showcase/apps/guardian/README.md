@@ -2,9 +2,11 @@
 
 The flagship SKPods showcase. A clinic asks Alice for pre-visit data. Her guardian agent answers in seconds, by rules she wrote and keeps **in her own pod**: yes to some things, a tap for one, a firm no to the last. She sees everything live, can pull the plug with one button, and can verify the audit chain herself.
 
-![Presenter mode](docs/screenshots/theatre-desktop.png)
+![The theatre: the clinic's screen, the guardian's thinking, Alice's phone](docs/screenshots/03-approval-card.png)
 
-Video of the captioned auto-play (presenter mode): [docs/presenter-mode.webm](docs/presenter-mode.webm).
+Video of the captioned auto-play (presenter mode, about two minutes): [docs/presenter-mode.webm](docs/presenter-mode.webm).
+
+Screenshots in [docs/screenshots](docs/screenshots), all taken by the e2e test against pods-dev: `01-welcome`, `02-theatre-asking`, `03-approval-card`, `04-access-log`, `05-revoked`, `06-chain-verified`, `07-chain-tampered`, `08-policy-editor`, `09-replay-after-policy-change`, `10-llm-wording` (service started with an OpenAI-compatible endpoint), and at 390 px wide `phone-1-clinic`, `phone-2-guardian`, `phone-3-alice`, `phone-4-rules`.
 
 ## The story
 
@@ -88,9 +90,30 @@ SKP_TEST_ENV=... npm run record           # re-record docs/presenter-mode.webm
 
 The e2e drives the real Nextcloud login form as `dw-alice`, files the clinic request, checks each field on the clinic screen (HTTP 200 reads and the values that arrive), taps Approve on the phone, goes around the guardian to the SSN file (403), revokes everything, verifies and tampers with the chain, edits a rule in the policy editor, saves it to the pod, checks the guardian reads the new version, replays and sees the changed behaviour, then restores the defaults.
 
+## Evidence (run on 2026-11-23 against pods-dev)
+
+`npm run test:unit`: 11 tests pass (rule engine twin, toggles round trip, trace, chain verifier).
+`npm run e2e`: 15 checks pass, in a real browser, as `dw-alice`:
+
+- login through the Nextcloud form (authorization code + PKCE + DPoP);
+- the clinic's request: DOB, allergies and medications auto-approved and really read by the clinic (HTTP 200, the values arrive and decrypt into place), insurance waiting, SSN denied with the explanation and the counter-offer;
+- the approval card with the recommendation, then **Alice's tap with her browser token** (accepted by the service), and the clinic reads the member ID;
+- the SSN file fetched directly: HTTP 403;
+- the live access log and four active grants, then **Revoke everything**: every grant ends, the clinic's reads turn into 403 and its screen empties;
+- the audit chain: for example 335 entries recomputed in the browser, the service agrees, and 335 of 335 entries match the copy in Alice's pod; a simulated edit is caught at the exact entry;
+- the policy editor: DOB set to "Ask me", saved to the pod (version 9 to 10), the guardian reads the new version, a replay now asks Alice for the date of birth; then the recommended rules are restored;
+- 390 px wide: panels become tabs, the approval card is reachable, no horizontal scroll.
+
 ## Engine limits and findings from building this
 
-- **Revoke is a per-resource `.acl` DELETE, and pods-dev answered one with `500`** when four revokes ran in parallel (`DELETE .../health/allergies.ttl.acl`, once in about ten runs). The service leaves that grant `active` (so access is honestly still there) and returns an error. The app retries with a short backoff, and never shows access as ended until the service says so. Proposed service change: retry the delete inside the service and serialise ACL writes per container.
+- **Revoke is a per-resource `.acl` DELETE, and pods-dev answers some of them with `500`** when several run at once in one container (`DELETE .../health/<resource>.acl`, seen in roughly every second "revoke everything" with four grants). The service leaves that grant `active` (so access is honestly still there) and returns an error to the caller. During the same moment the clinic's own read can come back `500` instead of 403. The app retries each revoke with a short backoff and never shows access as ended until the service says so. Proposed service change: retry the delete inside the service and serialise ACL writes per container. A failed revoke is not retried by the service's sweeper (it only handles expiry).
 - `SolidSession.fetch` only attaches the DPoP token to the identity provider's origin, and its key is private, so calling a second origin (sk-consent) needs a shim: `brokerFetchFor` in `src/lib/api.ts` reaches the session's key at runtime. Proposed library change: `SolidSession.fetchFor(origins)`.
 - Playwright's `storageState` cannot carry the session to a new browser context (the DPoP key is a non-extractable `CryptoKey` in IndexedDB), so the tests log in through the form in the context they use. A real reload keeps the session.
+- A request takes 4 to 5 seconds end to end without an LLM (each approved item writes a WAC rule to the pod) and about 10 seconds with one (a call per item). The UI shows the audit events as they land through the service's event stream instead of waiting for the whole request.
+- The pod's profile for the demo account carries a seed name; the app shows the persona "Alice Rivera" instead of reading it.
 - Everything in `packages/solid-web/ENGINE-NOTES.md` applies; the relevant parts here are no ETag (hence one writer per resource, and the policy is a single file only Alice writes), `403` instead of `401`, `acl:agent` only, and no notifications (SSE from the service instead of polling the pod).
+
+## Proposed changes outside this app
+
+- `@skpods/solid-web`: `SolidSession.fetchFor(origins)` so apps can call other DPoP-protected services without reaching into private state.
+- `sk-consent`: retry `.acl` deletes and serialise them per container; let the sweeper retry a failed owner revoke; optionally an `/events` ping for `request_received` so UIs can show "deciding" before the response.

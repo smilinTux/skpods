@@ -1,6 +1,6 @@
 import { Button, Spinner, cx } from '@skpods/ui'
 import type { PodStore } from '@skpods/solid-web'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { CLASS_LABEL } from '../config'
 import { checkEntry, genesis } from '../lib/chain'
 import { clock, shortHash, sleep } from '../lib/format'
@@ -43,6 +43,18 @@ const summarize = (e: AuditEntry) => {
   return `${e.event.replace(/_/g, ' ')}${dc ? ` · ${dc}` : ''}${actor ? ` · ${actor}` : ''}`
 }
 
+const ChainRow = memo(function ChainRow({ e, m, setRef }: { e: AuditEntry; m?: Mark; setRef: (seq: number, el: HTMLLIElement | null) => void }) {
+  return (
+    <li ref={(el) => setRef(e.seq, el)} data-seq={e.seq} data-mark={m} className={cx('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors duration-300', m === 'ok' ? 'chain-ok border-ok/30 bg-ok/5' : m === 'bad' ? 'chain-bad border-danger/50 bg-danger/10' : m === 'checking' ? 'border-warn/50 bg-warn/10' : m === 'skipped' ? 'border-line bg-surface-2/40 opacity-50' : 'border-line bg-surface-2/60')}>
+      <span className="w-7 shrink-0 text-right font-mono text-[10px] text-muted">#{e.seq}</span>
+      <span className="min-w-0 flex-1 truncate font-medium">{summarize(e)}</span>
+      <span className="hidden shrink-0 font-mono text-[10px] text-muted sm:inline">{clock(e.ts)}</span>
+      <span className="shrink-0 font-mono text-[10px] text-muted"><span className="opacity-60">{shortHash(e.prev)}</span> <span aria-hidden>&rarr;</span> <span className={cx(m === 'ok' ? 'text-ok' : m === 'bad' ? 'text-danger' : 'text-ink')}>{shortHash(e.hash)}</span></span>
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center">{m === 'ok' ? <CheckIcon size={13} className="text-ok" /> : m === 'bad' ? <XIcon size={13} className="text-danger" /> : m === 'checking' ? <Spinner size={12} /> : null}</span>
+    </li>
+  )
+})
+
 export function ChainView({ cmd, compact }: { cmd?: ChainCmd; compact?: boolean }) {
   const g = useGuardian()
   const [marks, setMarks] = useState<Record<number, Mark>>({})
@@ -50,6 +62,7 @@ export function ChainView({ cmd, compact }: { cmd?: ChainCmd; compact?: boolean 
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<{ kind: 'verify' | 'tamper'; ok: boolean; n: number; head?: string; badAt?: number; reason?: string; server?: boolean; mirror?: { have: number; match: number; n: number } | 'unavailable' }>()
   const rows = useRef<Record<number, HTMLLIElement | null>>({})
+  const setRef = useCallback((seq: number, el: HTMLLIElement | null) => void (rows.current[seq] = el), [])
   const runId = useRef(0)
   const entries = shown.length ? shown : g.audit
 
@@ -69,27 +82,43 @@ export function ChainView({ cmd, compact }: { cmd?: ChainCmd; compact?: boolean 
       }
       if (kind === 'tamper') {
         // Change one recorded decision in a private copy: the SSN denial becomes an approval.
-        const i = Math.max(1, list.findIndex((e) => e.event === 'decision' && e.data_class === 'ssn' && e.ts >= (g.baseline || '')) )
+        let i = -1
+        for (let k = list.length - 1; k >= 0 && i < 0; k--) if (list[k].event === 'decision' && list[k].data_class === 'ssn') i = k
         const at = i > 0 ? i : Math.floor(list.length / 2)
         list = list.map((e, k) => (k === at ? { ...e, detail: { ...(typeof e.detail === 'object' ? e.detail : {}), action: 'approve', duration_s: 259200 } } : e))
       }
       setShown(list)
-      const step = Math.min(140, Math.max(18, 2600 / Math.max(1, list.length)))
+      // Check every link first (cheap), then play the result back as a sweep that takes about four seconds however long the chain is.
       let prev = await genesis(g.webId)
       let bad: { i: number; reason?: string } | undefined
       for (let i = 0; i < list.length; i++) {
-        if (runId.current !== my) return
-        setMarks((m) => ({ ...m, [list[i].seq]: 'checking' }))
-        rows.current[list[i].seq]?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        await sleep(step)
         const r = await checkEntry(list[i], i, g.webId, prev)
         if (!r.ok) {
           bad = { i, reason: r.reason }
-          setMarks((m) => ({ ...m, [list[i].seq]: 'bad', ...Object.fromEntries(list.slice(i + 1).map((e) => [e.seq, 'skipped' as Mark])) }))
           break
         }
         prev = list[i].hash
-        setMarks((m) => ({ ...m, [list[i].seq]: 'ok' }))
+      }
+      const end = bad ? bad.i : list.length
+      const ticks = Math.max(1, Math.min(end, 100))
+      const batch = Math.ceil(end / ticks)
+      for (let t = 0; t < ticks; t++) {
+        if (runId.current !== my) return
+        const from = t * batch
+        const to = Math.min(end, from + batch)
+        setMarks((m) => {
+          const next = { ...m }
+          for (let i = from; i < to; i++) next[list[i].seq] = 'ok'
+          if (to < list.length) next[list[to].seq] = 'checking'
+          return next
+        })
+        rows.current[list[Math.max(from, to - 1)]?.seq]?.scrollIntoView({ block: 'center' })
+        await sleep(40)
+      }
+      if (bad) {
+        setMarks((m) => ({ ...m, [list[bad!.i].seq]: 'bad', ...Object.fromEntries(list.slice(bad!.i + 1).map((e) => [e.seq, 'skipped' as Mark])) }))
+        rows.current[list[bad.i].seq]?.scrollIntoView({ block: 'center' })
+        await sleep(300)
       }
       const sv = await serverP
       serverOk = sv?.ok
@@ -149,18 +178,7 @@ export function ChainView({ cmd, compact }: { cmd?: ChainCmd; compact?: boolean 
 
       <ol className={cx('min-h-0 flex-1 space-y-1 overflow-y-auto scroll-thin px-4 py-3', compact ? '' : 'max-h-[60vh]')} data-testid="chain-list">
         {entries.length === 0 && <li className="py-8 text-center text-sm text-muted">The chain is empty. It starts with the first request.</li>}
-        {entries.map((e) => {
-          const m = marks[e.seq]
-          return (
-            <li key={e.seq} ref={(el) => (rows.current[e.seq] = el)} data-seq={e.seq} data-mark={m} className={cx('flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors duration-300', m === 'ok' ? 'chain-ok border-ok/30 bg-ok/5' : m === 'bad' ? 'chain-bad border-danger/50 bg-danger/10' : m === 'checking' ? 'border-warn/50 bg-warn/10' : m === 'skipped' ? 'border-line bg-surface-2/40 opacity-50' : 'border-line bg-surface-2/60')}>
-              <span className="w-7 shrink-0 text-right font-mono text-[10px] text-muted">#{e.seq}</span>
-              <span className="min-w-0 flex-1 truncate font-medium">{summarize(e)}</span>
-              <span className="hidden shrink-0 font-mono text-[10px] text-muted sm:inline">{clock(e.ts)}</span>
-              <span className="shrink-0 font-mono text-[10px] text-muted"><span className="opacity-60">{shortHash(e.prev)}</span> <span aria-hidden>&rarr;</span> <span className={cx(m === 'ok' ? 'text-ok' : m === 'bad' ? 'text-danger' : 'text-ink')}>{shortHash(e.hash)}</span></span>
-              <span className="flex h-4 w-4 shrink-0 items-center justify-center">{m === 'ok' ? <CheckIcon size={13} className="text-ok" /> : m === 'bad' ? <XIcon size={13} className="text-danger" /> : m === 'checking' ? <Spinner size={12} /> : null}</span>
-            </li>
-          )
-        })}
+        {entries.map((e) => <ChainRow key={e.seq} e={e} m={marks[e.seq]} setRef={setRef} />)}
       </ol>
       {!compact && <div className="px-4 pb-3"><Pill>genesis = sha256("sk-consent audit genesis v1:" + your WebID)</Pill></div>}
     </div>
