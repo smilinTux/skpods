@@ -39,6 +39,14 @@ const shot = async (page: Page, name: string) => {
   fs.mkdirSync(shots, { recursive: true })
   await page.screenshot({ path: path.join(shots, `${name}.png`) })
 }
+/** On a timeout, print what the app thinks of each participant's pod: far more useful than "locator not found". */
+async function dump(page: Page, id: string) {
+  const state = await page.evaluate((cid) => {
+    const e = (window as unknown as { __podchat?: { get(id: string): { peers: { name: string; status: string; count: number; error?: string }[] } | undefined; live(id: string): unknown } }).__podchat
+    return JSON.stringify({ peers: e?.get(cid)?.peers.map((p) => [p.name, p.status, p.count, p.error]), live: e?.live(cid), hidden: document.hidden })
+  }, id)
+  console.log('STATE', state)
+}
 const bubbles = (page: Page) => page.getByTestId('message')
 const bubble = (page: Page, text: string) => page.getByTestId('message').filter({ hasText: text })
 
@@ -157,7 +165,7 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
   it('live updates both ways, read receipts, edit and delete', async () => {
     await pb.getByTestId('composer').fill(`Hi Alice ${run}, got it`)
     await pb.getByTestId('composer').press('Enter')
-    await bubble(pa, `Hi Alice ${run}`).waitFor(WAIT) // Alice's polling picks it up from Bob's pod
+    await bubble(pa, `Hi Alice ${run}`).waitFor(WAIT).catch(async (e) => { await dump(pa, convId); throw e }) // Alice's polling picks it up from Bob's pod
     await pa.getByTestId('seen-by').waitFor(WAIT) // Bob's tiny read receipt, from Bob's pod
     // photo from Alice
     const png = path.join(tmp, 'pic.png')
@@ -194,7 +202,7 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
     await pa.getByTestId('left-banner').waitFor(WAIT)
     // the pod itself now refuses Bob
     expect((await B.store.request(convUrl(A.root, convId))).status).toBe(403)
-    await pb.getByTestId('system-left').waitFor(WAIT)
+    await pb.getByTestId('system-left').waitFor(WAIT).catch(async (e) => { await dump(pb, convId); throw e })
     await pb.getByTestId('ghost-hidden').waitFor(WAIT)
     await expect.poll(() => (bubble(pb, `Our house ${run}`)).count(), WAIT).toBe(0)
     await expect.poll(() => (bubble(pb, `Hi Alice ${run}`)).count(), WAIT).toBe(1) // Bob's own words stay

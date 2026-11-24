@@ -147,6 +147,12 @@ export class ChatEngine {
   private myRoot = ''
   private memo = new Map<string, { v: number; value: unknown }>()
   status: 'idle' | 'loading' | 'ready' | 'error' = 'idle'
+  /** Last poll events, newest last. For debugging only (window.__podchat.debugLog in dev builds). */
+  debugLog: string[] = []
+  private trace(s: string) {
+    this.debugLog.push(`${new Date().toISOString().slice(11, 23)} ${s}`)
+    if (this.debugLog.length > 120) this.debugLog.shift()
+  }
   error?: string
   onToast?: (t: Toast) => void
   /** Called for a message from someone else that arrives while its conversation is not the visible one. */
@@ -208,6 +214,10 @@ export class ChatEngine {
 
   // ---------- lifecycle ----------
   async start(): Promise<void> {
+    // React StrictMode (dev) runs effect, cleanup, effect: stop() followed by start() must fully revive the engine.
+    this.stopped = false
+    clearTimeout(this.indexTimer)
+    for (const c of this.convs.values()) c.stopped = false
     this.status = 'loading'
     this.emit()
     try {
@@ -221,7 +231,10 @@ export class ChatEngine {
       this.emit()
       // pod setup (inbox so others can invite me) runs in the background, it is not needed to read
       void ensureInbox(this.store, this.me, this.myRoot, this.contactList).catch((e) => this.onToast?.({ title: 'Invitations are not set up', description: String(e.message ?? e), tone: 'warn' }))
-      if (this.auto) this.scheduleIndex()
+      if (this.auto) {
+        this.scheduleIndex()
+        for (const c of this.convs.values()) this.schedule(c)
+      }
     } catch (e) {
       this.status = 'error'
       this.error = (e as Error).message
@@ -390,6 +403,7 @@ export class ChatEngine {
       }
       c.lastPollAt = Date.now()
       c.lastPollOk = !failed
+      this.trace(`poll ${c.meta.id} changed=${changed} failed=${failed} next=${c.interval}ms peers=${[...c.peers.values()].map((p) => slugOf(p.webId) + ':' + p.status).join(',')}`)
       if (changed || wasOk !== c.lastPollOk) this.emit()
       if (this.auto) void this.maybeCompact(c)
       else await this.maybeCompact(c)

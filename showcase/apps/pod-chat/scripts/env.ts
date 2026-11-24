@@ -39,7 +39,11 @@ export function actor(who: string): Promise<Actor> {
         secret = c.client_secret
       }
       const session = await agentLogin({ issuer: BASE, clientId: id, clientSecret: secret })
-      return { who, webId: webIdOf(who), root: rootOf(who), store: new PodStore(session.fetch), session }
+      // SKP_ORIGIN=http://localhost:5176 makes every request look like it comes from the browser app (the engine treats
+      // requests with an Origin header differently, see browser.ts), so the headless suites can reproduce browser behaviour.
+      const origin = process.env.SKP_ORIGIN
+      const f: typeof fetch = origin ? (input, init) => session.fetch(input, { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers)), Origin: origin } }) : session.fetch
+      return { who, webId: webIdOf(who), root: rootOf(who), store: new PodStore(f), session }
     })()
     actors.set(who, a)
   }
