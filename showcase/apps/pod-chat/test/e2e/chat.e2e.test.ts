@@ -222,7 +222,7 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
 
   it('dark theme and phone width of Bob\'s chat', async () => {
     await pb.setViewportSize({ width: 390, height: 844 })
-    await pb.getByRole('button', { name: /dark theme|light theme/ }).first().click().catch(() => {})
+    await pb.evaluate(() => { document.documentElement.dataset.theme = 'dark' }) // the theme toggle lives in the chat list header
     await shot(pb, 'phone-chat-dark')
   })
 })

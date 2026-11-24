@@ -72,9 +72,16 @@ cd showcase && npm install
 # optionally DW_<USER>_CLIENT_ID/_SECRET (minted from the password when missing)
 export SKP_TEST_ENV=/path/to/pods-dev-test.env:/path/to/dw-clients.env
 
-npm run demo -w @skpods/pod-chat          # seed the family chat, clinic chat and the picnic invitation (about 35 s)
 npm run dev  -w @skpods/pod-chat          # http://localhost:5176/  (port is fixed: the OIDC redirect URI is registered)
+npm run demo -w @skpods/pod-chat          # in a second terminal: seed the family chat, clinic chat and picnic invitation (about 35 s),
+                                          # then sign each demo user in once so their pod trusts the app origin (see below)
 ```
+
+**Why the sign-in step.** pods-dev only answers a request that carries `Origin: http://localhost:5176` for a pod whose
+owner has signed in to that origin once and pressed *Allow*. Until then every private read of that pod answers `403`,
+even for people its ACL names. So in a real chat a person's messages reach the others only after they have used the
+app once, and Pod Chat shows such a person as *Not sharing* (info panel). `npm run demo` automates the one-time
+sign-in for the cast with Playwright (`npm run demo:authorise` repeats just that step, it needs the dev server up).
 
 Log in as `dw-alice` (family and clinic chats), `dw-bob` (family chat and the picnic invitation) or `dw-kid`. One
 browser profile holds one login, so use two profiles (or a private window) to watch both sides.
@@ -87,8 +94,9 @@ reach people whose pod accepts your WebID in its chat inbox (they must have open
 
 ```bash
 npm test -w @skpods/pod-chat                      # unit: codec, merge, layout, backoff, compaction picks (20 tests)
-npm run test:integration -w @skpods/pod-chat      # engine against pods-dev, headless (5 tests, about 4 min)
-npm run test:e2e -w @skpods/pod-chat              # two real browsers through the Nextcloud login form (about 5 min)
+npm run test:integration -w @skpods/pod-chat      # engine against pods-dev, headless (5 tests, about 6 min)
+npm run test:e2e -w @skpods/pod-chat              # two real browsers through the Nextcloud login form (8 tests, about 4 min)
+# SKP_ORIGIN=http://localhost:5176 makes the headless suite send the browser's Origin header on every request
 ```
 
 The integration suite proves, with real pods and real ACLs: the seeded history merges from three pods in order;
@@ -109,6 +117,12 @@ The e2e suite drives the same story through the UI and saves the screenshots bel
 
 ## Engine limits we hit (pods-dev)
 
+* **App origin must be authorised by every pod owner.** Request: any `GET` of a private resource with header
+  `Origin: http://localhost:5176` in `dw-kid`'s pod, as its owner, answered `403` before the first browser sign-in
+  and `200` after; the same request without `Origin` answered `200`. Alice's browser reading a container in Kid's
+  pod (`skpods/v1/chat/demo-family/`) answered `403` until then (Bob's, who had signed in, answered `200`).
+  Agent logins send no `Origin`, so the headless suites do not notice (`SKP_ORIGIN` reproduces it). Writing to a
+  recipient's invitation inbox is blocked the same way: that is the "has not opened Pod Chat yet" invitation error.
 * **403 for "does not exist"** and for "exists but not yours" alike: `GET` of a missing container, and of a container
   whose ACL excludes you, both answer 403. So "has not joined yet" and "left without a notice" look the same; the
   separate readable `left.ttl` is how a deliberate leave is told apart.
