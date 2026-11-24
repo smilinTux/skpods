@@ -14,6 +14,7 @@ import type { Ghost, Item, Msg, PeerStatus, PeerView, Person } from './model'
 import { chatRoot, convUrl, descriptorUrl, inboxUrl, leftUrl, slugOf } from './paths'
 import { People } from './people'
 import { ensureInbox, revokeConversationAcl, writeConversationAcl, writeLeaveNoticeAcl } from './setup'
+import { RELAY_LIVE_TIMING, type PingKind, type QueuedItem, type RelayClient, type ServerPing } from './relay'
 import { layout, mergeEntries, nextInterval, unreadCount } from './timeline'
 
 export interface PreparedUpload {
@@ -41,6 +42,8 @@ export interface EngineOptions {
   autoPoll?: boolean
   /** Poll timing (ms). Foreground conversation vs the rest. */
   timing?: { activeBase: number; activeMax: number; idleBase: number; idleMax: number; hiddenPeerRecheck: number; indexEvery: number }
+  /** Optional push hints. While every relay socket is live, polling slows to RELAY_LIVE_TIMING; otherwise nothing changes. */
+  relay?: RelayClient
 }
 
 export const DEFAULT_TIMING = { activeBase: 2000, activeMax: 12000, idleBase: 12000, idleMax: 45000, hiddenPeerRecheck: 8000, indexEvery: 10000 }
@@ -89,6 +92,8 @@ interface Conv {
   receiptTimer?: ReturnType<typeof setTimeout>
   compacting: boolean
   stopped: boolean
+  /** Leaves the relay room; set while joined. */
+  relayOff?: () => void
 }
 
 export interface ConvSummary {
@@ -120,6 +125,8 @@ export interface LiveState {
   kind: 'live' | 'offline'
   lastOkAt?: number
   everyMs: number
+  /** The relay is live: changes arrive as pings, polling is only the safety net. */
+  push: boolean
 }
 
 async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>): Promise<void> {
@@ -132,7 +139,9 @@ export class ChatEngine {
   readonly me: string
   readonly people: People
   private cache: FileCache
-  private timing: NonNullable<EngineOptions['timing']>
+  private baseTiming: NonNullable<EngineOptions['timing']>
+  private relay?: RelayClient
+  private relayOffs: (() => void)[] = []
   private convs = new Map<string, Conv>()
   private invites: Invitation[] = []
   private inviteSeen = new Set<string>()
@@ -165,8 +174,83 @@ export class ChatEngine {
     this.cache = o.cache ?? FileCache.forUser(o.me)
     this.onToast = o.onToast
     this.contactList = [...(o.contacts ?? [])]
-    this.timing = o.timing ?? DEFAULT_TIMING
+    this.baseTiming = o.timing ?? DEFAULT_TIMING
+    this.relay = o.relay
     this.auto = o.autoPoll !== false
+  }
+
+  /** Poll timing right now: slower while the relay is live, the normal timing in every other state. */
+  private get timing(): NonNullable<EngineOptions['timing']> {
+    return this.relay?.state === 'live' ? { ...this.baseTiming, ...RELAY_LIVE_TIMING } : this.baseTiming
+  }
+
+  // ---------- relay (optional) ----------
+  private attachRelay() {
+    const relay = this.relay
+    if (!relay) return
+    this.detachRelay()
+    this.relayOffs.push(relay.onState(() => this.retime()), relay.onQueued((items) => this.onQueued(items)))
+    for (const c of this.convs.values()) this.joinRoom(c)
+  }
+
+  private detachRelay() {
+    for (const off of this.relayOffs.splice(0)) off()
+    for (const c of this.convs.values()) this.leaveRoom(c)
+  }
+
+  /** A descriptor without relayRoom means polling only: never join for it. */
+  private joinRoom(c: Conv) {
+    if (!this.relay || !c.meta.relayRoom || c.relayOff || this.stopped) return
+    try {
+      c.relayOff = this.relay.join(c.meta.relayRoom, (p) => this.onPing(c, p))
+    } catch {
+      /* a malformed room id: polling only */
+    }
+  }
+
+  private leaveRoom(c: Conv) {
+    c.relayOff?.()
+    c.relayOff = undefined
+  }
+
+  /** A ping is only a hint about which conversation to re-read, and only from someone in it. */
+  private isParticipant(c: Conv, from: string) {
+    return c.meta.participants.includes(from)
+  }
+
+  private onPing(c: Conv, p: ServerPing) {
+    if (this.stopped || c.stopped || !this.isParticipant(c, p.from)) return
+    this.trace(`ping ${c.meta.id} ${p.kind}`)
+    this.kick(c)
+  }
+
+  private onQueued(items: QueuedItem[]) {
+    if (this.stopped) return
+    const hit = new Set<Conv>()
+    for (const i of items) {
+      const c = [...this.convs.values()].find((x) => x.meta.relayRoom === i.room)
+      if (c && !c.stopped && this.isParticipant(c, i.from)) hit.add(c)
+    }
+    for (const c of hit) this.kick(c)
+  }
+
+  private publish(c: Conv, kind: PingKind, url: string) {
+    if (this.relay && c.meta.relayRoom) this.relay.publish(c.meta.relayRoom, kind, url)
+  }
+
+  /** The relay state changed: every conversation restarts its backoff from the base of the timing that now applies. */
+  private retime() {
+    for (const c of this.convs.values()) {
+      c.interval = c.meta.id === this.activeId ? this.timing.activeBase : this.timing.idleBase
+      if (this.auto && !c.polling) this.schedule(c)
+    }
+    this.emit()
+  }
+
+  /** Throttled typing hint for a conversation (at most one per 3 s). No-op without a relay room. */
+  typing(convId: string) {
+    const room = this.convs.get(convId)?.meta.relayRoom
+    if (room) this.relay?.typing(room)
   }
 
   // ---------- subscription ----------
@@ -218,6 +302,7 @@ export class ChatEngine {
     this.stopped = false
     clearTimeout(this.indexTimer)
     for (const c of this.convs.values()) c.stopped = false
+    this.attachRelay()
     this.status = 'loading'
     this.emit()
     try {
@@ -244,6 +329,7 @@ export class ChatEngine {
 
   stop() {
     this.stopped = true
+    this.detachRelay()
     clearTimeout(this.indexTimer)
     for (const c of this.convs.values()) {
       c.stopped = true
@@ -317,6 +403,7 @@ export class ChatEngine {
     }
     for (const w of meta.participants) c.peers.set(w, this.newPeer(w))
     this.convs.set(meta.id, c)
+    this.joinRoom(c)
     void this.learn(meta.participants)
     this.emit()
     if (this.auto) void this.pollConv(c).then(() => this.schedule(c))
@@ -634,9 +721,9 @@ export class ChatEngine {
   /** Not memoized: read every second by the "live" indicator. */
   live(id: string): LiveState {
     const c = this.convs.get(id)
-    if (!c) return { kind: 'offline', everyMs: 0 }
+    if (!c) return { kind: 'offline', everyMs: 0, push: false }
     const lastOkAt = Math.max(0, ...[...c.peers.values()].map((p) => p.lastOk ?? 0)) || undefined
-    return { kind: c.lastPollOk ? 'live' : 'offline', lastOkAt, everyMs: c.interval }
+    return { kind: c.lastPollOk ? 'live' : 'offline', lastOkAt, everyMs: c.interval, push: this.relay?.state === 'live' }
   }
 
   get invitations(): (Invitation & { senderName: string })[] {
@@ -698,7 +785,8 @@ export class ChatEngine {
     await writeConversationAcl(this.store, this.me, container, meta.participants)
     await this.store.delete(inv.url).catch(() => {})
     this.invites = this.invites.filter((i) => i.url !== inv.url)
-    await this.adopt(meta)
+    const c = await this.adopt(meta)
+    this.publish(c, 'join', container + 'conversation.ttl')
     this.emit()
     return meta.id
   }
@@ -732,6 +820,7 @@ export class ChatEngine {
       await this.store.put(url, encodeMessage(url, raw))
       c.pending = c.pending.filter((p) => p.id !== m.id)
       c.recent.set(m.id, { ...m, status: 'sent', fileUrl: url })
+      this.publish(c, 'message', url)
       this.emit()
       c.interval = this.timing.activeBase
       this.kick(c)
@@ -768,6 +857,7 @@ export class ChatEngine {
     try {
       const url = container + editFile(id, at)
       await this.store.put(url, encodeEdit(url, { id, text: clean, at }, this.me))
+      this.publish(c, 'edit', url)
       this.kick(c)
     } catch (e) {
       c.editOverlay.delete(id)
@@ -791,6 +881,7 @@ export class ChatEngine {
       for (const e of me.inv.edits.get(id) ?? []) await this.store.delete(e).catch(() => false)
       const att = msg?.attachment?.url ?? me.inv.attachments.get(id)
       if (att) await this.store.delete(att).catch(() => false)
+      this.publish(c, 'delete', container + messageFile(id))
       this.kick(c)
     } catch (e) {
       c.deleteOverlay.delete(id)
@@ -830,6 +921,7 @@ export class ChatEngine {
       const container = convUrl(this.myRoot, c.meta.id)
       const url = container + receiptFile(upTo)
       await this.store.put(url, encodeReceipt(url, this.me, upTo))
+      this.publish(c, 'receipt', url)
       const old = (c.peers.get(this.me)?.inv.receipts ?? []).filter((u) => u !== url)
       for (const u of old) await this.store.delete(u).catch(() => false)
     } catch {
@@ -849,6 +941,7 @@ export class ChatEngine {
     const me = c.peers.get(this.me)!
     me.inv.hasLeft = true
     me.leftAt = Date.now()
+    this.publish(c, 'leave', url)
     this.emit()
     this.kick(c)
   }
@@ -864,6 +957,7 @@ export class ChatEngine {
     me.inv.hasLeft = false
     me.leftAt = undefined
     me.sig = undefined
+    this.publish(c, 'join', container + 'conversation.ttl')
     this.emit()
     this.kick(c)
   }
@@ -874,6 +968,7 @@ export class ChatEngine {
     await this.store.deleteRecursive(convUrl(this.myRoot, convId))
     c.stopped = true
     clearTimeout(c.timer)
+    this.leaveRoom(c)
     this.convs.delete(convId)
     await this.cache.purge(chatRoot(this.myRoot) + convId + '/')
     this.emit()
@@ -902,6 +997,7 @@ export class ChatEngine {
       const raws: RawMessage[] = picks.map((m) => ({ id: m.id, author: m.author, text: m.text, createdAt: m.createdAt, attachment: m.attachment }))
       const url = container + segmentFile(raws[0].createdAt, raws[raws.length - 1].createdAt)
       await this.store.put(url, encodeSegment(url, raws)) // archive first, then delete the loose files: readers never see a gap
+      this.publish(c, 'archive', url)
       await pool(picks, 3, async (m) => void (await this.store.delete(container + messageFile(m.id)).catch(() => false)))
       me.sig = undefined
     } catch {

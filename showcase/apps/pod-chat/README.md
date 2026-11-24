@@ -90,10 +90,14 @@ browser profile holds one login, so use two profiles (or a private window) to wa
 Contacts: the demo cast (`VITE_DEMO_CAST`, default the dw-* users) plus anyone you add by WebID. Invitations only
 reach people whose pod accepts your WebID in its chat inbox (they must have opened Pod Chat once, which sets it up).
 
+Relay (optional): set `VITE_RELAY_URL` (for example `wss://relay.example`) to receive "something changed" pings from
+the SKPods relay (`docs/CHAT-PROTOCOL.md`). While it is live the badge says *Live (push)* and polling slows down; if
+the relay is unset or down, Pod Chat polls exactly as before.
+
 ### Tests
 
 ```bash
-npm test -w @skpods/pod-chat                      # unit: codec, merge, layout, backoff, compaction picks (20 tests)
+npm test -w @skpods/pod-chat                      # unit: codec, merge, layout, backoff, compaction picks, relay client and wiring
 npm run test:integration -w @skpods/pod-chat      # engine against pods-dev, headless (5 tests, about 6 min)
 npm run test:e2e -w @skpods/pod-chat              # two real browsers through the Nextcloud login form (8 tests, about 4 min)
 # SKP_ORIGIN=http://localhost:5176 makes the headless suite send the browser's Origin header on every request

@@ -3,6 +3,7 @@ import { Button, Card, ErrorState, Skeleton, ToastProvider, useToast } from '@sk
 import { useEffect, useMemo, useState } from 'react'
 import { ChatEngine } from './lib/engine'
 import { demoCast } from './lib/people'
+import { RelayClient } from './lib/relay'
 import { ChatView } from './ui/ChatView'
 import { ConversationList } from './ui/ConversationList'
 import { Chat, Lock } from './ui/icons'
@@ -10,6 +11,7 @@ import { NewChat } from './ui/NewChat'
 import { useEngine, useHashRoute } from './ui/useEngine'
 
 const DEFAULT_ISSUER = import.meta.env.VITE_POD_ISSUER ?? 'https://pods-dev.skstack01.douno.it'
+const RELAY_URL = (import.meta.env.VITE_RELAY_URL as string | undefined) || undefined
 
 function useSession() {
   const [session, setSession] = useState<SolidSession>()
@@ -85,7 +87,9 @@ function Signed({ session }: { session: SolidSession }) {
 
   const engine = useMemo(() => {
     const cast = demoCast(new URL(me).origin).filter((w) => w !== me)
-    return new ChatEngine({ store: new PodStore(session.fetch), me, contacts: [...new Set([...cast, ...savedContacts(me)])] })
+    // Optional push hints: unset VITE_RELAY_URL means no relay at all, exactly the polling app.
+    const relay = RELAY_URL ? new RelayClient({ url: RELAY_URL, auth: session.relayAuth, me }) : undefined
+    return new ChatEngine({ store: new PodStore(session.fetch), me, contacts: [...new Set([...cast, ...savedContacts(me)])], relay })
   }, [session, me])
 
   useEffect(() => {
