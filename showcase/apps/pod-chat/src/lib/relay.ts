@@ -19,7 +19,7 @@ export type ServerFrame =
 
 export type RelayState = 'off' | 'connecting' | 'live' | 'down'
 
-/** Poll timing while every relay socket is live: pings do the fast path, polling is only the safety net. */
+/** Poll timing for a conversation whose relay room socket is live: pings do the fast path, polling is only the safety net. */
 export const RELAY_LIVE_TIMING = { activeBase: 15000, activeMax: 60000, idleBase: 30000, idleMax: 120000 }
 
 const ROOM_RE = /^[0-9a-f]{32}$/
@@ -31,6 +31,7 @@ const READY_TIMEOUT = 10_000
 const STABLE_AFTER = 30_000
 const OUTBOX_TTL = 30_000
 const REFUSED_BACKOFF = 15 * 60_000
+const RATE_LIMITED_BACKOFF = 60_000
 
 const str = (v: unknown): v is string => typeof v === 'string'
 const int = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v)
@@ -203,12 +204,19 @@ class Link {
     clearTimeout(this.timer)
     clearTimeout(this.probe)
     const jitter = 0.8 + 0.4 * this.o.random()
-    if (code === 4401 || code === 4429) {
-      // refused (auth_failed) or rate limited: retrying fast only burns the relay's free quota
+    if (code === 4401) {
+      // refused (auth_failed): retrying fast only burns the relay's free quota
       this.failures = Math.max(this.failures, DOWN_AFTER)
       this.setState('down')
       this.timer = setTimeout(() => this.open(), Math.round(REFUSED_BACKOFF * jitter))
-      if (code === 4401 && !this.earlyUsed) this.probeToken(Math.min(60_000, 1000 * 2 ** (this.failures - 1)))
+      if (!this.earlyUsed) this.probeToken(Math.min(60_000, 1000 * 2 ** (this.failures - 1)))
+      return
+    }
+    if (code === 4429) {
+      // rate limited: the relay's window is 60 s, so come back after about that long, spread out (0.5x to 1.5x)
+      this.failures = Math.max(this.failures, DOWN_AFTER)
+      this.setState('down')
+      this.timer = setTimeout(() => this.open(), Math.round(RATE_LIMITED_BACKOFF * (0.5 + this.o.random())))
       return
     }
     this.setState(this.failures >= DOWN_AFTER ? 'down' : 'connecting')
@@ -289,6 +297,7 @@ export class RelayClient {
   private mailbox?: Link
   private queuedListeners = new Set<(items: QueuedItem[]) => void>()
   private stateListeners = new Set<(s: RelayState) => void>()
+  private roomStateListeners = new Set<(room: string, s: RelayState) => void>()
   private current: RelayState = 'off'
 
   constructor(private opts: RelayOptions) {
@@ -305,8 +314,27 @@ export class RelayClient {
     return this.current
   }
 
-  private link(url: string | Promise<string>, onFrame: (f: ServerFrame) => void): Link {
-    return new Link(url, { auth: this.opts.auth, WS: this.WS, random: this.random, onFrame, onState: () => this.recompute() })
+  /** The state of one room's socket: `off` when the room is not joined. */
+  roomState(room: string): RelayState {
+    return this.rooms.get(room)?.link.state ?? 'off'
+  }
+
+  private link(url: string | Promise<string>, onFrame: (f: ServerFrame) => void, room?: string): Link {
+    return new Link(url, {
+      auth: this.opts.auth,
+      WS: this.WS,
+      random: this.random,
+      onFrame,
+      onState: () => {
+        if (room !== undefined) this.roomChanged(room)
+        this.recompute()
+      },
+    })
+  }
+
+  private roomChanged(room: string) {
+    const s = this.roomState(room)
+    for (const cb of [...this.roomStateListeners]) cb(room, s)
   }
 
   private recompute() {
@@ -319,9 +347,13 @@ export class RelayClient {
   }
 
   private roomLink(room: string, listeners: Set<(p: ServerPing) => void>): Link {
-    return this.link(`${this.base}/v1/room/${room}`, (f) => {
-      if (f.t === 'ping') for (const l of [...listeners]) l(f)
-    })
+    return this.link(
+      `${this.base}/v1/room/${room}`,
+      (f) => {
+        if (f.t === 'ping') for (const l of [...listeners]) l(f)
+      },
+      room,
+    )
   }
 
   /** Join a room. Pings from it go to onPing (typing frames are dropped here). Returns leave. */
@@ -345,6 +377,7 @@ export class RelayClient {
       if (entry.listeners.size || this.rooms.get(room) !== entry) return
       entry.link.close()
       this.rooms.delete(room)
+      this.roomChanged(room)
       this.recompute()
     }
   }
@@ -381,6 +414,12 @@ export class RelayClient {
   onState(cb: (s: RelayState) => void): () => void {
     this.stateListeners.add(cb)
     return () => void this.stateListeners.delete(cb)
+  }
+
+  /** Called whenever one room socket's state changes (including leaving the room, which reads as `off`). */
+  onRoomState(cb: (room: string, s: RelayState) => void): () => void {
+    this.roomStateListeners.add(cb)
+    return () => void this.roomStateListeners.delete(cb)
   }
 
   close(): void {

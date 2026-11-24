@@ -249,19 +249,26 @@ describe('RelayClient', () => {
     r.close()
   })
 
-  it('close 4429 waits 15 minutes before dialling again', async () => {
+  it('close 4429 waits about 60 s (0.5x to 1.5x jitter) before dialling again', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const r = client()
-    r.join(ROOM, () => {})
-    await liveFake(last())
-    last().drop(4429)
-    expect(r.state).toBe('down')
-    vi.advanceTimersByTime(15 * 60_000 - 1)
-    await micro()
-    expect(FakeWS.all.length).toBe(1)
-    vi.advanceTimersByTime(1)
-    expect(FakeWS.all.length).toBe(2)
-    r.close()
+    for (const [rnd, wait] of [
+      [0, 30_000],
+      [0.5, 60_000],
+      [0.999, 89_940],
+    ] as const) {
+      FakeWS.all = []
+      const r = client({ random: () => rnd })
+      r.join(ROOM, () => {})
+      await liveFake(last())
+      last().drop(4429)
+      expect(r.state).toBe('down')
+      vi.advanceTimersByTime(wait - 1)
+      await micro()
+      expect(FakeWS.all.length).toBe(1)
+      vi.advanceTimersByTime(1)
+      expect(FakeWS.all.length).toBe(2)
+      r.close()
+    }
   })
 
   it('close 4403 stops the room until it is joined again', async () => {
@@ -342,6 +349,30 @@ describe('RelayClient', () => {
     r.close()
   })
 
+  it('reports each room state on its own, off once left', async () => {
+    const r = client()
+    const seen: [string, string][] = []
+    r.onRoomState((room, st) => seen.push([room, st]))
+    expect(r.roomState(ROOM)).toBe('off')
+    const leave = r.join(ROOM, () => {})
+    r.join(ROOM2, () => {})
+    const [a, b] = FakeWS.all
+    expect(r.roomState(ROOM)).toBe('connecting')
+    await goLive(a)
+    expect(r.roomState(ROOM)).toBe('live')
+    expect(r.roomState(ROOM2)).toBe('connecting')
+    expect(r.state).toBe('connecting')
+    expect(seen).toEqual([[ROOM, 'live']])
+    leave()
+    expect(r.roomState(ROOM)).toBe('off')
+    expect(seen).toEqual([
+      [ROOM, 'live'],
+      [ROOM, 'off'],
+    ])
+    expect(b.closed).toBe(false)
+    r.close()
+  })
+
   it('closes a room socket when its last listener leaves', () => {
     const r = client()
     const off1 = r.join(ROOM, () => {})
@@ -401,6 +432,36 @@ describe('engine with a relay', () => {
     const { engine, relay } = await engineWith([conv('c-legacy'), conv('c-new', ROOM)], false)
     expect(engine.list().map((c) => c.id).sort()).toEqual(['c-legacy', 'c-new'])
     expect(roomSockets().map((w) => w.url)).toEqual([`wss://relay.example/v1/room/${ROOM}`])
+    engine.stop()
+    relay.close()
+  })
+
+  it('an old conversation keeps DEFAULT_TIMING and no push badge while the relay is live', async () => {
+    const { engine, relay } = await engineWith([conv('c-legacy'), conv('c-new', ROOM)], false)
+    await vi.waitFor(() => expect(mailbox()).toBeDefined())
+    engine.setActive('c-legacy')
+    await goLive(roomSockets()[0])
+    await goLive(mailbox()!)
+    expect(relay.state).toBe('live')
+    expect(relay.roomState(ROOM)).toBe('live')
+    expect(engine.live('c-legacy')).toMatchObject({ push: false, everyMs: DEFAULT_TIMING.activeBase })
+    expect(engine.live('c-new')).toMatchObject({ push: true, everyMs: RELAY_LIVE_TIMING.idleBase })
+    engine.setActive('c-new')
+    expect(engine.live('c-new')).toMatchObject({ push: true, everyMs: RELAY_LIVE_TIMING.activeBase })
+    expect(engine.live('c-legacy')).toMatchObject({ push: false, everyMs: DEFAULT_TIMING.idleBase })
+    engine.stop()
+    relay.close()
+  })
+
+  it('a conversation goes fast only on its own room: the mailbox alone being live changes nothing', async () => {
+    const { engine, relay } = await engineWith([conv('c-new', ROOM)], false)
+    await vi.waitFor(() => expect(mailbox()).toBeDefined())
+    engine.setActive('c-new')
+    await goLive(mailbox()!)
+    expect(relay.roomState(ROOM)).toBe('connecting')
+    expect(engine.live('c-new')).toMatchObject({ push: false, everyMs: DEFAULT_TIMING.activeBase })
+    await goLive(roomSockets()[0])
+    expect(engine.live('c-new')).toMatchObject({ push: true, everyMs: RELAY_LIVE_TIMING.activeBase })
     engine.stop()
     relay.close()
   })

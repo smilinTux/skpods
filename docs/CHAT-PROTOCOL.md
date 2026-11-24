@@ -128,8 +128,8 @@ matching close code.
 | Case | Error code |
 |---|---|
 | Client frame over 4096 UTF-8 bytes | `too_large` 4413 |
-| No `auth` frame within 5 s | `auth_failed` 4401 |
-| Auth fails verification (expired token, stale or reused proof, wrong key, issuer not in profile, mailbox `w` mismatch) | `auth_failed` 4401 |
+| No `auth` frame within 5 s, or verification still running 20 s after the socket opened | `auth_failed` 4401 |
+| Auth fails verification (expired token, stale or reused proof, wrong key, issuer not in profile, mailbox `w` mismatch, verified WebID over 512 UTF-8 bytes) | `auth_failed` 4401 |
 | Non-JSON or binary frame | `bad_frame` 4400 |
 | Unknown `t` | `bad_frame` 4400 |
 | First frame is not `auth` | `bad_frame` 4400 |
@@ -142,6 +142,9 @@ matching close code.
 | Too many frames too fast | `rate_limited` 4429 |
 
 An `auth` frame that is not the first frame, or a second `auth`, is also `bad_frame`.
+
+An internal relay failure (storage, quota) closes the socket with 1011 and no `error` frame. An upgrade whose `Host`
+is over 255 bytes gets HTTP 400. As with any other close, the client falls back to its normal polling.
 
 ## 4. Trust rules
 

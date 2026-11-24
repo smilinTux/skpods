@@ -69,7 +69,7 @@ alice's pod                          bob's pod
   the others re-read that conversation from the pods at once. Someone who was offline gets the pings from their mailbox
   when they reconnect. The relay never sees message text, titles or files, and a ping is only a hint: the client
   still trusts nothing but what the pods return.
-* **Slower polling while live.** While every relay socket is up, the badge says *Live (push)* and polling slows to
+* **Slower polling while live.** While a conversation's relay room socket is up, its badge says *Live (push)* and its polling slows to
   15 s (open chat) and 30 s (others), up to 60 s and 120 s, as a safety net. If the relay is unset, refuses the login or
   goes down, polling drops straight back to the normal pace above. Conversations created before the relay (no room id
   in their descriptor) simply keep polling.
