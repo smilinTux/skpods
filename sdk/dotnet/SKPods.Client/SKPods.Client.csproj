@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- STUB. No NuGet dependencies on purpose: ES256 and JWS are done with
+       System.Security.Cryptography + System.Text.Json. If you prefer a library,
+       Microsoft.IdentityModel.JsonWebTokens can replace DpopProofFactory.Sign. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SKPods.Client</RootNamespace>
+  </PropertyGroup>
+</Project>

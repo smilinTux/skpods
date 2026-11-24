@@ -1,0 +1,23 @@
+[package]
+name = "sk-solid"
+version = "0.0.1"
+edition = "2021"
+description = "STUB: Solid client and dev tooling for SKPods (DPoP, client credentials, pod CRUD, WAC grants, seed fixtures)"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "sk_solid"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sk-solid"
+path = "src/main.rs"
+
+# Dependencies are kept minimal so the skeleton checks fast. When implementing, add:
+#   reqwest (rustls, json), tokio, p256 + ecdsa + sha2 + base64 (DPoP), uuid, oxttl or sophia (Turtle).
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
