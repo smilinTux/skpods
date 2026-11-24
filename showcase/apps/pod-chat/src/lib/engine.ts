@@ -94,6 +94,8 @@ interface Conv {
   stopped: boolean
   /** Leaves the relay room; set while joined. */
   relayOff?: () => void
+  /** A relay hint arrived while a poll was in flight: poll once more when it ends, the change may be newer. */
+  hinted?: boolean
 }
 
 export interface ConvSummary {
@@ -221,7 +223,12 @@ export class ChatEngine {
   private onPing(c: Conv, p: ServerPing) {
     if (this.stopped || c.stopped || !this.isParticipant(c, p.from)) return
     this.trace(`ping ${c.meta.id} ${p.kind}`)
-    this.kick(c)
+    this.hint(c)
+  }
+
+  private hint(c: Conv) {
+    if (c.polling) c.hinted = true
+    else this.kick(c)
   }
 
   private onQueued(items: QueuedItem[]) {
@@ -231,7 +238,7 @@ export class ChatEngine {
       const c = [...this.convs.values()].find((x) => x.meta.relayRoom === i.room)
       if (c && !c.stopped && this.isParticipant(c, i.from)) hit.add(c)
     }
-    for (const c of hit) this.kick(c)
+    for (const c of hit) this.hint(c)
   }
 
   private publish(c: Conv, kind: PingKind, url: string) {
@@ -496,6 +503,10 @@ export class ChatEngine {
       else await this.maybeCompact(c)
     } finally {
       c.polling = false
+      if (c.hinted) {
+        c.hinted = false
+        if (this.auto && !c.stopped && !this.stopped) queueMicrotask(() => this.kick(c))
+      }
     }
     return changed
   }

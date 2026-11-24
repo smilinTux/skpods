@@ -312,6 +312,24 @@ describe('engine with a relay', () => {
     relay.close()
   })
 
+  it('a ping that lands during a poll gets one more poll afterwards', async () => {
+    const { engine, relay, pod } = await engineWith([conv('c-new', ROOM)], true)
+    await vi.waitFor(() => expect(pod.reads.length).toBeGreaterThanOrEqual(2))
+    const ws = roomSockets()[0]
+    await goLive(ws)
+    await new Promise((r) => setTimeout(r, 30))
+    const before = pod.reads.length
+    const ping = { t: 'ping', from: BOB, kind: 'message', url: `${root('bob')}skpods/v1/chat/c-new/m-1.ttl`, seq: 1, at: 1 }
+    ws.recv(ping) // starts a poll
+    ws.recv({ ...ping, seq: 2 }) // arrives while it runs
+    ws.recv({ ...ping, seq: 3 }) // still one extra poll, not two
+    await vi.waitFor(() => expect(pod.reads.length).toBe(before + 4))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(pod.reads.length).toBe(before + 4)
+    engine.stop()
+    relay.close()
+  })
+
   it('kicks each conversation named in queued items once, only for participants', async () => {
     const { engine, relay, pod } = await engineWith([conv('c-new', ROOM)], true)
     await vi.waitFor(() => expect(pod.reads.length).toBeGreaterThanOrEqual(2))
