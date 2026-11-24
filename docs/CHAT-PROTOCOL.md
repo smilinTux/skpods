@@ -48,8 +48,9 @@ A message written by an agent on its owner's behalf may carry `skp:generatedBy`,
 
 ## 3. Relay wire protocol v1
 
-All frames are JSON text frames of at most 4096 bytes. Wire protocol version is `1`, sent as `"v":1` in the auth
-frame. A frame over 4096 bytes is refused with `too_large`.
+All frames are JSON text frames. Client frames are at most 4096 UTF-8 bytes; a client frame over that is refused
+with `too_large`. Relay-to-client frames have no protocol size cap. Wire protocol version is `1`, sent as `"v":1` in
+the auth frame.
 
 ### Endpoints
 
@@ -94,6 +95,11 @@ All of these answer `auth_failed` and never `ready`.
 
 Client frames must not contain `from`, `seq` or `at`; the relay sets them. The `url` of a ping must be `https`.
 
+On connecting to the mailbox, after `ready`, the relay sends the queued hints as one or more `queued` frames: it may
+split a drain across several frames, and an empty queue is sent as one `queued` frame with an empty list. After the
+drain, each new hint arrives live as a `queued` frame with one item. Clients must accept any number of `queued` frames
+and treat each one the same way.
+
 ### Error codes
 
 | Code | Close code |
@@ -108,12 +114,12 @@ A room holds at most 50 members.
 
 ### Which code for which failure
 
-The size limit is measured in UTF-8 bytes of the whole text frame. Every error is followed by a close with the
+The client frame size limit is measured in UTF-8 bytes of the whole text frame. Every error is followed by a close with the
 matching close code.
 
 | Case | Error code |
 |---|---|
-| Frame over 4096 UTF-8 bytes | `too_large` 4413 |
+| Client frame over 4096 UTF-8 bytes | `too_large` 4413 |
 | No `auth` frame within 5 s | `auth_failed` 4401 |
 | Auth fails verification (expired token, stale or reused proof, wrong key, issuer not in profile, mailbox `w` mismatch) | `auth_failed` 4401 |
 | Non-JSON or binary frame | `bad_frame` 4400 |
