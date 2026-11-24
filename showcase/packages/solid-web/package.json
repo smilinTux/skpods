@@ -1,0 +1,26 @@
+{
+  "name": "@skpods/solid-web",
+  "version": "0.1.0",
+  "description": "Solid-OIDC login (browser and Node), DPoP fetch, PodStore, Turtle and WAC helpers for SKPods",
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts"
+  },
+  "scripts": {
+    "test": "vitest run test/unit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "typecheck": "tsc -p . --noEmit"
+  },
+  "dependencies": {
+    "n3": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/n3": "^1.16.0",
+    "@types/node": "^22.0.0",
+    "playwright": "^1.49.0",
+    "tsx": "^4.23.15",
+    "vitest": "^2.1.0"
+  }
+}
