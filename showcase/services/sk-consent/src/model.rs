@@ -183,4 +183,7 @@ pub struct Grant {
     pub revoked_at: Option<DateTime<Utc>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub revoke_reason: Option<String>,
+    /// IRI of the audit entry that recorded the grant, in the subject's pod mirror.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub audit_ref: Option<String>,
 }

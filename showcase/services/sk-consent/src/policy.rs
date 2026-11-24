@@ -1,6 +1,6 @@
 //! Guardian policy: deterministic rules by data class x requester kind x context.
 //!
-//! The policy is a JSON-LD file in the owner's pod (`/doorway/v1/consents/policy.jsonld`).
+//! The policy is a JSON-LD file in the owner's pod (`/skpods/v1/consents/policy.jsonld`).
 //! Rules are evaluated top to bottom, first match wins. No match means `ask_owner`.
 //! Nothing here calls an LLM. Explanations are added later and never change the outcome.
 
@@ -41,7 +41,7 @@ fn default_type() -> String {
     "GuardianPolicy".into()
 }
 fn default_context() -> serde_json::Value {
-    serde_json::json!({"@vocab": "https://w3id.org/doorway/v1#"})
+    serde_json::json!({"@vocab": "https://w3id.org/skpods/v1#"})
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,14 +199,14 @@ pub fn evaluate(p: &Policy, i: &EvalInput) -> Decision {
 pub fn demo_policy(owner: &str, agent: &str) -> Policy {
     let cat = |p: &str, l: &str| CatalogEntry { path: p.into(), label: l.into() };
     let mut catalog = BTreeMap::new();
-    catalog.insert("dob".into(), cat("doorway/v1/health/dob.ttl", "Date of birth"));
-    catalog.insert("allergies".into(), cat("doorway/v1/health/allergies.ttl", "Allergies"));
-    catalog.insert("medications".into(), cat("doorway/v1/health/medications.ttl", "Current medications"));
+    catalog.insert("dob".into(), cat("skpods/v1/health/dob.ttl", "Date of birth"));
+    catalog.insert("allergies".into(), cat("skpods/v1/health/allergies.ttl", "Allergies"));
+    catalog.insert("medications".into(), cat("skpods/v1/health/medications.ttl", "Current medications"));
     catalog.insert(
         "insurance_member_id".into(),
-        cat("doorway/v1/health/insurance-card.ttl", "Insurance member ID"),
+        cat("skpods/v1/health/insurance-card.ttl", "Insurance member ID"),
     );
-    catalog.insert("ssn".into(), cat("doorway/v1/health/ssn.ttl", "Social Security number"));
+    catalog.insert("ssn".into(), cat("skpods/v1/health/ssn.ttl", "Social Security number"));
     Policy {
         context: default_context(),
         type_: default_type(),
@@ -214,7 +214,7 @@ pub fn demo_policy(owner: &str, agent: &str) -> Policy {
         owner: owner.into(),
         agent: agent.into(),
         approvers: vec![],
-        managed_containers: vec!["doorway/v1/health/".into()],
+        managed_containers: vec!["skpods/v1/health/".into()],
         catalog,
         ceiling: "30d".into(),
         rules: vec![
