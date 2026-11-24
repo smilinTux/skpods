@@ -7,7 +7,7 @@ import { PodStore } from '@skpods/solid-web'
 import {
   attachmentFile, classify, compareIds, decodeConversation, decodeEdit, decodeInvitation, decodeLeft, decodeMessages, editFile, encodeConversation,
   encodeEdit, encodeInvitation, encodeLeft, encodeMessage, encodeReceipt, encodeSegment, listChildren, messageFile, nameOf, newConversationId,
-  newMessageId, receiptFile, segmentFile, type ConvMeta, type Invitation, type RawEdit, type RawMessage,
+  newMessageId, newRelayRoom, receiptFile, segmentFile, type ConvMeta, type Invitation, type RawEdit, type RawMessage,
 } from './codec'
 import { FileCache } from './cache'
 import type { Ghost, Item, Msg, PeerStatus, PeerView, Person } from './model'
@@ -662,6 +662,7 @@ export class ChatEngine {
       creator: this.me,
       participants: [this.me, ...others],
       createdAt: Date.now(),
+      relayRoom: newRelayRoom(),
     }
     const container = convUrl(this.myRoot, meta.id)
     // The first PUT creates the container owner-only; the ACL that lets the others read comes second, so nothing is exposed early.

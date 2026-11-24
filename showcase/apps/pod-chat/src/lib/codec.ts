@@ -45,6 +45,13 @@ export interface ConvMeta {
   creator: string
   participants: string[]
   createdAt: number
+  /** 32 lowercase hex, absent on conversations made before the relay existed (they poll only). */
+  relayRoom?: string
+}
+
+/** A fresh 128-bit relay room id. It is a capability: it lives only in the descriptor. */
+export function newRelayRoom(): string {
+  return [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 const IDRE = '(\\d{13}-[a-z0-9]{6})'
@@ -167,6 +174,7 @@ export function encodeConversation(fileUrl: string, c: ConvMeta): string {
     q(s, dc + 'creator', iri(c.creator)),
     q(s, dc + 'created', dt(new Date(c.createdAt).toISOString())),
     ...c.participants.map((p) => q(s, NS.skp + 'participant', iri(p))),
+    ...(c.relayRoom ? [q(s, NS.skp + 'relayRoom', lit(c.relayRoom))] : []),
   ])
 }
 export function decodeConversation(text: string, fileUrl: string): ConvMeta | undefined {
@@ -176,6 +184,7 @@ export function decodeConversation(text: string, fileUrl: string): ConvMeta | un
   const creator = one(st, s, 'http://purl.org/dc/terms/creator')
   if (!id || !creator) return undefined
   const participants = all(st, s, NS.skp + 'participant')
+  const room = one(st, s, NS.skp + 'relayRoom')
   return {
     id,
     title: one(st, s, S + 'name') ?? '',
@@ -183,6 +192,7 @@ export function decodeConversation(text: string, fileUrl: string): ConvMeta | un
     creator,
     participants: participants.includes(creator) ? participants : [creator, ...participants],
     createdAt: Date.parse(one(st, s, 'http://purl.org/dc/terms/created') ?? '') || 0,
+    relayRoom: room && /^[0-9a-f]{32}$/.test(room) ? room : undefined,
   }
 }
 
