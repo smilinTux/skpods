@@ -13,7 +13,11 @@ export function ConvFace({ members, me, kind, size = 'md' }: { members: Person[]
   const others = members.filter((m) => m.webId !== me)
   if (kind === 'direct' || others.length <= 1) {
     const p = others[0] ?? members[0]
-    return <Avatar name={p?.name ?? '?'} seed={p?.webId} size={size === 'sm' ? 'md' : size === 'md' ? 'md' : 'lg'} />
+    return (
+      <span className={cx('inline-flex shrink-0 items-center justify-center', size === 'lg' ? 'h-14 w-14' : 'h-11 w-11')}>
+        <Avatar name={p?.name ?? '?'} seed={p?.webId} size={size === 'lg' ? 'lg' : 'md'} className={size === 'lg' ? '' : '!h-11 !w-11 !text-base'} />
+      </span>
+    )
   }
   const [a, b] = others
   return (

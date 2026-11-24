@@ -100,6 +100,7 @@ export interface ConvSummary {
   unread: number
   left: boolean
   lastActivity: number
+  loading: boolean
 }
 
 export interface ConvDetail {
@@ -584,6 +585,7 @@ export class ChatEngine {
           unread: unreadCount(all, this.me, myRead),
           left: this.isLeft(c),
           lastActivity: lastMsg?.createdAt ?? c.meta.createdAt,
+          loading: !c.peers.get(this.me)!.loaded,
         })
       }
       return out.sort((a, b) => b.lastActivity - a.lastActivity)

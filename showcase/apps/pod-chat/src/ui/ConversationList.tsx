@@ -82,7 +82,7 @@ export function ConversationList({ engine, me, name, activeId, onOpen, onNew, on
                   </span>
                   <span className="flex items-center gap-2">
                     <span className={cx('min-w-0 flex-1 truncate text-sm', c.unread ? 'text-ink' : 'text-muted')}>
-                      {c.left ? <span className="inline-flex items-center gap-1"><Lock width={12} height={12} /> You left</span> : c.last ? <>{c.last.mine ? 'You: ' : c.kind === 'group' ? `${engine.person(c.last.author).name.split(' ')[0]}: ` : ''}{c.last.text || (c.last.image ? 'Photo' : '')}</> : <em>No messages yet</em>}
+                      {c.loading ? <span className="inline-block h-3 w-40 max-w-full animate-pulse rounded bg-surface-2 align-middle" aria-label="Loading" /> : c.left ? <span className="inline-flex items-center gap-1"><Lock width={12} height={12} /> You left</span> : c.last ? <>{c.last.mine ? 'You: ' : c.kind === 'group' ? `${engine.person(c.last.author).name.split(' ')[0]}: ` : ''}{c.last.text || (c.last.image ? 'Photo' : '')}</> : <em>No messages yet</em>}
                     </span>
                     {c.unread > 0 && <span className="min-w-[1.4rem] shrink-0 rounded-full bg-teal-700 px-1.5 py-0.5 text-center text-[11px] font-bold text-white dark:bg-brand dark:text-brand-ink" data-testid="unread">{c.unread}</span>}
                   </span>

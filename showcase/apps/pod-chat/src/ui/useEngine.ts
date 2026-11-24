@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { ChatEngine } from '../lib/engine'
 
 /** Re-render whenever the engine's state changes. */
@@ -14,7 +14,8 @@ export function useHashRoute(): [string | undefined, (id: string | undefined) =>
     window.addEventListener('hashchange', h)
     return () => window.removeEventListener('hashchange', h)
   }, [])
-  return [id, (next) => { location.hash = next ? `#/c/${encodeURIComponent(next)}` : '#/' }]
+  const go = useCallback((next: string | undefined) => { location.hash = next ? `#/c/${encodeURIComponent(next)}` : '#/' }, [])
+  return [id, go]
 }
 
 /** Tick once a second (for "checked 3s ago"). */
