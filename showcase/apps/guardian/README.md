@@ -30,7 +30,7 @@ Then: the clinic screen shows exactly what it received and when access ends (liv
 
 ### Presenter mode
 
-The **Presenter mode** button auto-plays the whole story with captions, a spotlight on the panel being talked about, and a visible cursor that taps the real buttons (the clinic's Send, Alice's Approve, Revoke everything, Verify). Nothing is faked: the presenter clicks the same buttons a person would, so every call is real. Pause, skip ahead and exit are on the caption bar. `?present=1` starts it automatically after login. About 100 seconds.
+The **Presenter mode** button auto-plays the whole story with captions, a spotlight on the panel being talked about, and a visible cursor that taps the real buttons (the clinic's Send, Alice's Approve, Revoke everything, Verify). Nothing is faked: the presenter clicks the same buttons a person would, so every call is real. Pause, skip ahead and exit are on the caption bar. `?present=1` starts it automatically after login. About two minutes.
 
 ## What is real and what is not
 
