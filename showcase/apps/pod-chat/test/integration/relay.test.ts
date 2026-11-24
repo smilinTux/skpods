@@ -104,19 +104,36 @@ describe.skipIf(!haveEnv || !RELAY)('pod chat with the relay on pods-dev', () =>
 
   it('a token for a different htu is refused', async () => {
     const auth = relayAuthFromAgent(B.session)
-    const { token, proof } = await auth(relayHtu(`${RELAY}/v1/me`))
-    const ws = new WebSocket(`${RELAY}/v1/room/${room || '0'.repeat(32)}`)
-    const frames: string[] = []
-    const code = await new Promise<number>((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error('no close within 15 s')), 15_000)
-      ws.onopen = () => ws.send(JSON.stringify({ t: 'auth', v: 1, token, proof }))
-      ws.onmessage = (e) => frames.push(String(e.data))
-      ws.onclose = (e) => {
-        clearTimeout(t)
-        resolve(e.code)
-      }
-    })
-    expect(code).toBe(4401)
-    expect(frames.some((f) => f.includes('"ready"'))).toBe(false)
+    const roomUrl = `${RELAY}/v1/room/${room || '0'.repeat(32)}`
+    /** Dial the room, send an auth frame whose proof was made for `htu`, report the frames and how it ended. */
+    const attempt = async (htu: string) => {
+      const { token, proof } = await auth(relayHtu(htu))
+      const ws = new WebSocket(roomUrl)
+      const frames: string[] = []
+      const end = await new Promise<{ code?: number; ready: boolean }>((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('neither ready nor close within 15 s')), 15_000)
+        ws.onopen = () => ws.send(JSON.stringify({ t: 'auth', v: 1, token, proof }))
+        ws.onmessage = (e) => {
+          frames.push(String(e.data))
+          if (String(e.data).includes('"ready"')) {
+            clearTimeout(t)
+            resolve({ ready: true })
+          }
+        }
+        ws.onclose = (e) => {
+          clearTimeout(t)
+          resolve({ code: e.code, ready: false })
+        }
+      })
+      ws.onclose = null
+      ws.close()
+      return { ...end, frames }
+    }
+    const wrong = await attempt(`${RELAY}/v1/me`)
+    expect(wrong.code).toBe(4401)
+    expect(wrong.frames.some((f) => f.includes('"ready"'))).toBe(false)
+    // control: the same identity with a proof for the room's own htu is admitted, so the refusal was the htu
+    const right = await attempt(roomUrl)
+    expect(right.ready).toBe(true)
   })
 })
