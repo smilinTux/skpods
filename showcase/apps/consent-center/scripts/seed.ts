@@ -53,6 +53,11 @@ async function containerAcl(a: Actor, container: string, opts: { agent: AccessMo
   await writeAcl(a.store, `${container}.acl`, rules, a.webId)
 }
 
+/** Remove per-resource ACLs left by earlier runs: a stale one could still carry a grant. */
+async function clearGrantAcls(a: Actor, container: string, names: string[]) {
+  for (const n of names) await a.store.delete(`${container}${n}.acl`).catch(() => false)
+}
+
 async function ownerOnly(a: Actor, resource: string) {
   await writeAcl(a.store, `${resource}.acl`, [ownerRule(a.webId, resource, false)], a.webId)
 }
@@ -91,6 +96,7 @@ export async function seedGrandma(g: Actor, aliceWebId: string, sunriseWebId: st
   const v1 = `${g.root}skpods/v1/`
   const care = `${v1}care/`
   const put = (path: string, body: string, ct = 'text/turtle') => g.store.put(`${v1}${path}`, body, ct)
+  await clearGrantAcls(g, care, ['care-log.ttl', 'medication-schedule.ttl', 'family-contacts.ttl'])
 
   const entries: Array<[number, string, string, string]> = [
     [1.5, 'meal', 'Marcus T. (care aide)', 'Ate most of lunch, soup and bread. Drank two glasses of water. In good spirits, asked about the garden.'],
@@ -180,6 +186,7 @@ export async function seedKid(k: Actor, aliceWebId: string, clinicWebId: string)
   const v1 = `${k.root}skpods/v1/`
   const health = `${v1}health/`
   const put = (path: string, body: string, ct = 'text/turtle') => k.store.put(`${v1}${path}`, body, ct)
+  await clearGrantAcls(k, health, ['allergies.ttl', 'immunizations.ttl'])
   await put('health/allergies.ttl', `${P}<#it> a skp:HealthRecord ;\n  skp:dataClass "allergies" ;\n  schema:name "Theo Rivera" ;\n  skp:allergen "Tree nuts", "Bee stings" .\n`)
   await put('health/immunizations.ttl', `${P}<#it> a skp:HealthRecord ;\n  skp:dataClass "immunizations" ;\n  schema:name "Theo Rivera" ;\n  skp:immunization "MMR (2 doses)", "DTaP (5 doses)", "Varicella (2 doses)" .\n`)
   await put('health/home-address.ttl', `${P}<#it> a skp:HealthRecord ;\n  skp:dataClass "home_address" ;\n  schema:address "12 Harbour Lane, Springfield (fictional)" .\n`)

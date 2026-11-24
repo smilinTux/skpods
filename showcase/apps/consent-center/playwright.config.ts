@@ -21,7 +21,7 @@ export default defineConfig({
     {
       command: './scripts/broker.sh',
       url: 'http://localhost:8781/healthz',
-      reuseExistingServer: false,
+      reuseExistingServer: Boolean(process.env.REUSE_BROKER),
       timeout: 60_000,
       env: { ...(process.env as Record<string, string>), SKCONSENT_DB: path.join(os.tmpdir(), `consent-center-e2e-${process.pid}.db`) },
     },
