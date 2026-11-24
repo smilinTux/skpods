@@ -1,0 +1,43 @@
+[package]
+name = "sk-consent"
+version = "0.1.0"
+edition = "2021"
+description = "Consent broker and guardian agent for SKPods (Solid): WAC grants with expiry, hash-chained audit, policy engine"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+name = "sk_consent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sk-consent"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+axum = "0.8"
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive", "env"] }
+futures-util = "0.3"
+hex = "0.4"
+jsonwebtoken = "9"
+oxrdf = "0.2"
+oxttl = "0.1"
+p256 = { version = "0.13", features = ["ecdsa", "jwk"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+tower-http = { version = "0.6", features = ["cors"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+uuid = { version = "1", features = ["v4"] }
+
+[workspace]
