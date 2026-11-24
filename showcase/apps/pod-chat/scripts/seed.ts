@@ -90,10 +90,26 @@ export async function cleanDemo(log: (s: string) => void = () => {}) {
   }
 }
 
+/** Removes every non-demo conversation (c-*) and invitation from the test pods: leftovers of earlier test runs. */
+export async function cleanTestChats(log: (s: string) => void = () => {}) {
+  for (const who of CAST) {
+    const a = await actor(who)
+    for (const e of await a.store.list(`${a.root}skpods/v1/chat/`).catch(() => [])) {
+      const id = e.url.replace(/\/$/, '').split('/').pop()!
+      if (id.startsWith('c-')) {
+        await a.store.deleteRecursive(e.url).catch(() => {})
+        log(`removed ${who}/${id}`)
+      }
+    }
+    for (const e of await a.store.list(inboxUrl(a.root)).catch(() => [])) if (e.url.split('/').pop()!.startsWith('inv-c-')) await a.store.delete(e.url).catch(() => false)
+  }
+}
+
 export async function seedDemo(log: (s: string) => void = () => {}, now = Date.now()): Promise<void> {
   const A = Object.fromEntries(await Promise.all(CAST.map(async (w) => [w, await actor(w)] as const))) as Record<string, Actor>
   const all = CAST.map((w) => A[w].webId)
   await cleanDemo(log)
+  await cleanTestChats(log)
   for (const who of CAST) {
     const changed = await ensureInbox(A[who].store, A[who].webId, A[who].root, all)
     log(`${who}: invitation inbox ${changed ? 'configured' : 'already fine'}`)

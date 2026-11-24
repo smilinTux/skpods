@@ -1,14 +1,13 @@
 // The chat engine against pods-dev, headless (agent logins, no browser). Two or three real pods, real ACLs.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { actor, haveEnv, type Actor } from '../../scripts/env'
-import { seedDemo } from '../../scripts/seed'
+import { actor, haveEnv, webIdOf, type Actor } from '../../scripts/env'
+import { cleanTestChats, seedDemo } from '../../scripts/seed'
 import { ChatEngine } from '../../src/lib/engine'
 import { demoCast } from '../../src/lib/people'
 import { convUrl, inboxUrl } from '../../src/lib/paths'
 import { classify, encodeMessage, messageFile, nameOf, newMessageId } from '../../src/lib/codec'
 import { drawingPng } from '../../scripts/png'
 
-const run = `t${Date.now().toString(36)}`
 let A: Actor, B: Actor, K: Actor
 const engines: ChatEngine[] = []
 
@@ -19,6 +18,16 @@ async function engineFor(a: Actor): Promise<ChatEngine> {
   return e
 }
 const texts = (e: ChatEngine, id: string) => e.get(id)!.items.flatMap((i) => (i.t === 'msg' ? [i.msg.text] : []))
+/** The invitation lands in the inbox a moment after the POST: refresh until it shows (and say what the inbox held if it never does). */
+async function inviteFor(e: ChatEngine, a: Actor, id: string) {
+  for (let i = 0; i < 6; i++) {
+    await e.refresh()
+    const inv = e.invitations.find((x) => x.descriptor.includes(id))
+    if (inv) return inv
+    await new Promise((r) => setTimeout(r, 1500))
+  }
+  throw new Error(`no invitation for ${id}; inbox held ${(await a.store.list(inboxUrl(a.root))).map((x) => nameOf(x.url)).join(', ')}`)
+}
 const list = async (a: Actor, id: string) => (await a.store.list(convUrl(a.root, id))).map((e) => nameOf(e.url))
 
 describe.skipIf(!haveEnv)('pod chat engine on pods-dev', () => {
@@ -28,10 +37,7 @@ describe.skipIf(!haveEnv)('pod chat engine on pods-dev', () => {
   })
   afterAll(async () => {
     engines.forEach((e) => e.stop())
-    for (const a of [A, B, K]) {
-      for (const id of (await a.store.list(`${a.root}skpods/v1/chat/`)).map((e) => nameOf(e.url)).filter((n) => n.startsWith(`c-${run}`) || n === 'demo-picnic-test')) await a.store.deleteRecursive(convUrl(a.root, id)).catch(() => {})
-      for (const e of await a.store.list(inboxUrl(a.root)).catch(() => [])) if (e.url.includes(`c-${run}`)) await a.store.delete(e.url).catch(() => {})
-    }
+    await cleanTestChats() // leaves the seeded demo conversations in place
   })
 
   it('loads the seeded family chat from three pods: archives plus loose files, merged by time', async () => {
@@ -82,8 +88,7 @@ describe.skipIf(!haveEnv)('pod chat engine on pods-dev', () => {
     const id = await alice.createConversation({ others: [B.webId] })
     expect(id).toMatch(/^c-/)
     expect(alice.get(id)!.meta.kind).toBe('direct')
-    await bob.refresh()
-    const inv = bob.invitations.find((i) => i.descriptor.includes(id))!
+    const inv = await inviteFor(bob, B, id)
     expect(inv.senderName).toContain('Alice')
     // Rename so cleanup can find it
     await bob.acceptInvite(inv)
@@ -161,9 +166,8 @@ describe.skipIf(!haveEnv)('pod chat engine on pods-dev', () => {
     const alice = await engineFor(A)
     const bob = await engineFor(B)
     await alice.refresh()
-    const id = await alice.createConversation({ others: [B.webId] })
-    await bob.refresh()
-    await bob.acceptInvite(bob.invitations.find((i) => i.descriptor.includes(id))!)
+    const id = await alice.createConversation({ title: 'Archive test', others: [B.webId, K.webId] })
+    await bob.acceptInvite(await inviteFor(bob, B, id))
     const container = convUrl(A.root, id)
     const base = Date.now() - 5 * 3600_000
     const ids: string[] = []
@@ -194,7 +198,7 @@ describe.skipIf(!haveEnv)('pod chat engine on pods-dev', () => {
   it('a stranger cannot read a conversation they are not part of', async () => {
     const alice = await engineFor(A)
     await alice.refresh()
-    const id = await alice.createConversation({ others: [B.webId] })
+    const id = await alice.createConversation({ title: 'Private test', others: [B.webId, webIdOf('grandma')] })
     await alice.send(id, 'private between us')
     const r = await K.store.request(convUrl(A.root, id))
     expect(r.status).toBe(403)
