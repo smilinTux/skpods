@@ -1,0 +1,38 @@
+{
+  "name": "@skpods/pod-chat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p . --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "demo": "tsx scripts/seed.ts",
+    "demo:clean": "tsx scripts/seed.ts --clean",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "demo:authorise": "tsx scripts/seed.ts --authorise"
+  },
+  "dependencies": {
+    "@skpods/solid-web": "*",
+    "@skpods/ui": "*",
+    "n3": "^1.17.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.20",
+    "playwright": "^1.49.0",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.23.15",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  }
+}

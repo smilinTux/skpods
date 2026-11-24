@@ -1,0 +1,19 @@
+# Terms added by the Consent Center showcase app. Namespace https://w3id.org/skpods/v1# (same as the other showcase vocabularies).
+# Reuses schema.org for names, dates and text. Only what those lack is defined here.
+@prefix skp:    <https://w3id.org/skpods/v1#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+skp:Delegation a rdfs:Class ; rdfs:label "Delegation"@en ;
+    rdfs:comment "Someone acts for another person: a parent for a child, an attorney-in-fact for an elder. Stored in the delegate's pod under skpods/v1/delegations/ and, as the record of authority, in the principal's pod."@en .
+skp:principal a rdf:Property ; rdfs:domain skp:Delegation ; rdfs:comment "WebID of the person being acted for."@en .
+skp:delegate a rdf:Property ; rdfs:domain skp:Delegation ; rdfs:comment "WebID of the person who acts."@en .
+skp:role a rdf:Property ; rdfs:domain skp:Delegation ; rdfs:comment "skp:AttorneyInFact or skp:Parent."@en .
+skp:AttorneyInFact a rdfs:Resource ; rdfs:label "Attorney-in-fact"@en .
+skp:Parent a rdfs:Resource ; rdfs:label "Parent"@en .
+skp:reference a rdf:Property ; rdfs:domain skp:Delegation ; rdfs:range xsd:string ; rdfs:comment "Reference of the legal document (fictional in the demo)."@en .
+skp:CareLogEntry a rdfs:Class ; rdfs:label "Care log entry"@en ;
+    rdfs:comment "One dated note by care staff (schema:dateCreated, schema:author, schema:text)."@en .
+skp:category a rdf:Property ; rdfs:domain skp:CareLogEntry ; rdfs:range xsd:string ; rdfs:comment "meal, mobility, sleep, medication, mood, health."@en .
+skp:immunization a rdf:Property ; rdfs:domain skp:HealthRecord ; rdfs:range xsd:string .

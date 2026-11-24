@@ -4,17 +4,17 @@ Four small apps that show what Solid pods feel like when the software around the
 
 | App | What it shows | Status |
 |---|---|---|
-| **Consent Center** (`apps/consent-center`) | Every request for your data in one place. Approve with an expiry ("24h", "until the appointment ends"), watch grants count down and switch off by themselves, verify a tamper-evident audit chain. | planned (wave 2) |
-| **Receipts Wallet** (`apps/receipts-wallet`) | Businesses drop receipts into your pod through an Append-only inbox. You keep them across providers; search, totals, export. | planned (wave 2) |
-| **Pod Chat** (`apps/pod-chat`) | Each person's messages live in their own pod; the conversation is assembled from both. Live-ish updates by smart polling. | planned (wave 2) |
-| **Guardian** (`apps/guardian`) | An AI guardian agent with a leash: a clinic asks for personal data before a visit, the agent decides under a policy stored in the owner's pod, and the owner sees and can revoke everything. | planned (wave 2) |
+| **Consent Center** (`apps/consent-center`) | Every request for your data in one place. Approve with an expiry ("24h", "until the appointment ends"), watch grants count down and switch off by themselves, verify a tamper-evident audit chain. Lead story: a care facility gets 24h on Grandma's care log. | **works against pods-dev**: e2e 7/7 ([README](apps/consent-center/README.md), [screenshots](apps/consent-center/docs/screenshots/)) |
+| **Receipts Wallet** (`apps/receipts-wallet`) | Businesses drop receipts into your pod through an Append-only inbox. You keep them across providers; search, totals, export. | **works against pods-dev**: e2e 6/6 ([README](apps/receipts-wallet/README.md), [screenshots](apps/receipts-wallet/docs/screenshots/)) |
+| **Pod Chat** (`apps/pod-chat`) | Each person's messages live in their own pod; the conversation is assembled from both. Live-ish updates by smart polling. Leave the chat and your messages vanish for everyone, because they were always yours. | **works against pods-dev**: e2e 8/8 ([README](apps/pod-chat/README.md), [screenshots](apps/pod-chat/docs/screenshots/)) |
+| **Guardian** (`apps/guardian`) | An AI guardian agent with a leash: a clinic asks for personal data before a visit, the agent decides under a policy stored in the owner's pod, and the owner sees and can revoke everything. Presenter mode plays the whole story. | **works against pods-dev**: e2e 15/15 ([README](apps/guardian/README.md), [video](apps/guardian/docs/presenter-mode.webm), [screenshots](apps/guardian/docs/screenshots/)) |
 | **Hello Pod** (`apps/hello-pod`) | The smallest app on the stack: log in, show your WebID, pod root and a file list, write a note. Proves login, DPoP and the UI kit end to end. | **works against pods-dev** |
 
 Shared code:
 
 | Package | Purpose |
 |---|---|
-| `packages/solid-web` | TypeScript library: Solid-OIDC login for browsers (discovery, dynamic client registration, code + PKCE, DPoP, refresh, restore, logout), a DPoP `fetch`, a Node client-credentials login for agents and tests, `PodStore` (get, put, post, N3 patch, delete, list, containers, type index), Turtle read and write with `n3`, WAC helpers, a polling watcher. **Read `packages/solid-web/ENGINE-NOTES.md` first**: it lists what the engine really does, including bugs. |
+| `packages/solid-web` | TypeScript library: Solid-OIDC login for browsers (discovery, dynamic client registration, code + PKCE, DPoP, refresh, restore, logout), a DPoP `fetch`, a Node client-credentials login for agents and tests, `PodStore` (get, put, post, N3 patch, delete, list, containers, type index), Turtle read and write with `n3`, WAC helpers, a polling watcher. **Read `packages/solid-web/ENGINE-NOTES.md` first**: it lists what the engine really does, including the behaviours apps must design around. |
 | `packages/ui` | Design system: Tailwind preset (deep navy, teal glow, warm accent, light and dark) and React components: `AppShell`, `Card`, `Button`, `ConsentChip`, `Countdown`, `AuditTimeline`, `Avatar`, `ToastProvider`, `EmptyState`, `ErrorState`, `Skeleton`, `ThemeToggle`. |
 | `vocab/skpods-showcase.ttl` | Terms in `https://w3id.org/skpods/v1#` (prefix `skp:`) used by the apps. Reuse schema.org, vcard, FOAF and Solid terms first. |
 

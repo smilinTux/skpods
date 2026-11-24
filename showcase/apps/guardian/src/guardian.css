@@ -1,0 +1,68 @@
+/* Guardian app styles on top of @skpods/ui. Tokens come from the SKPods preset. */
+
+/* A forced light island: the clinic's own website does not follow Alice's theme. */
+.skp-light {
+  --skp-bg: 246 248 252;
+  --skp-surface: 255 255 255;
+  --skp-surface-2: 240 244 250;
+  --skp-line: 221 228 240;
+  --skp-ink: 11 21 48;
+  --skp-muted: 94 107 138;
+  --skp-brand: 13 148 136;
+  --skp-brand-soft: 204 244 238;
+  --skp-ok: 22 163 74;
+  --skp-warn: 202 138 4;
+  --skp-danger: 220 38 38;
+  --skp-shadow: 11 21 48;
+  color-scheme: light;
+  color: rgb(11 21 48);
+}
+
+.stage { position: relative; }
+.stage::before {
+  content: ""; position: absolute; inset: -40px -12px; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(40rem 22rem at 50% 38%, rgb(var(--skp-brand) / .13), transparent 70%),
+    radial-gradient(28rem 20rem at 85% 10%, rgb(var(--skp-warm) / .08), transparent 70%);
+}
+
+/* Panel chrome */
+.panel { @apply relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-line bg-surface/80 shadow-card backdrop-blur; transition: box-shadow .5s ease, border-color .5s ease, transform .5s ease; }
+.panel-label { @apply flex items-center gap-2 px-1 pb-2 text-[11px] font-semibold uppercase tracking-[.14em] text-muted; }
+.spot { box-shadow: 0 0 0 1px rgb(var(--skp-brand) / .7), 0 0 60px -6px rgb(var(--skp-brand) / .55); border-color: rgb(var(--skp-brand) / .8); }
+.dim { opacity: .55; filter: saturate(.7); }
+.panel, .panel-slot { transition: opacity .5s ease, filter .5s ease, box-shadow .5s ease; }
+
+/* Phone */
+.phone {
+  @apply relative mx-auto flex w-full flex-col overflow-hidden bg-bg;
+}
+@media (min-width: 1280px) {
+  .phone { max-width: 372px; border-radius: 46px; border: 9px solid #0a0f1f; box-shadow: 0 0 0 2px rgb(var(--skp-line)), 0 30px 70px -20px rgb(0 0 0 / .55), inset 0 0 0 1px rgb(255 255 255 / .06); }
+  .phone::before { content: ''; position: absolute; z-index: 20; top: 8px; left: 50%; transform: translateX(-50%); width: 92px; height: 24px; border-radius: 99px; background: #05070f; }
+}
+.phone-buzz { animation: buzz .5s ease-in-out 2; }
+
+/* thinking timeline rail */
+.rail { position: relative; }
+.rail::before { content: ''; position: absolute; left: 11px; top: 4px; bottom: 4px; width: 2px; background: linear-gradient(rgb(var(--skp-line)), rgb(var(--skp-line) / .2)); border-radius: 2px; }
+.step-in { animation: fade-up .45s ease-out both; }
+
+/* shimmering "thinking" bar */
+.thinking-bar { position: relative; height: 3px; overflow: hidden; border-radius: 3px; background: rgb(var(--skp-line)); }
+.thinking-bar::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgb(var(--skp-brand)), transparent); animation: sweep 1.2s ease-in-out infinite; }
+
+/* presenter */
+.caption { animation: caption-in .5s ease-out both; }
+.cursor { position: fixed; z-index: 90; left: 0; top: 0; pointer-events: none; transition: transform .9s cubic-bezier(.3,.8,.2,1); filter: drop-shadow(0 4px 8px rgb(0 0 0 / .45)); }
+.tap-ripple { position: fixed; z-index: 89; pointer-events: none; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 99px; background: rgb(var(--skp-brand) / .55); animation: ripple .7s ease-out both; }
+
+/* hero rings */
+.ring { position: absolute; inset: 0; border-radius: 9999px; border: 1px solid rgb(var(--skp-brand) / .35); animation: ripple 3.6s ease-out infinite; }
+
+/* chain verification */
+.chain-ok { box-shadow: inset 3px 0 0 rgb(var(--skp-ok)); }
+.chain-bad { box-shadow: inset 3px 0 0 rgb(var(--skp-danger)); }
+
+.kbd { @apply rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-muted; }
+.scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(var(--skp-line)) transparent; }
