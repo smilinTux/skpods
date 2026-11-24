@@ -1,6 +1,13 @@
+pub mod api;
 pub mod audit;
+pub mod auth;
+pub mod broker;
+pub mod config;
+pub mod demo;
+pub mod llm;
 pub mod model;
 pub mod policy;
 pub mod rdf;
 pub mod solid;
+pub mod store;
 pub mod util;
