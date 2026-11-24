@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { NS, PodError, PodStore, one, type SolidSession } from '@skpods/solid-web'
 import { Avatar, Button, Card, EmptyState, ErrorState, cx } from '@skpods/ui'
-import { PRESETS } from '../lib/demo-data'
+import { DEMO_BUSINESSES, PRESETS } from '../lib/demo-data'
 import { money } from '../lib/format'
 import { CATEGORIES, PAYMENT_METHODS, ReceiptError, buildReceiptTurtle, computeTotals, receiptSlug, type ReceiptInput } from '../lib/receipt'
 import { businessKey, pathsFor } from '../lib/wallet'
@@ -41,6 +41,7 @@ function explain(e: unknown): string {
     if (e.status === 403) return 'The customer\'s pod refused this delivery (403). They have not added you as a business, or they stopped accepting receipts from you.'
     if (e.status === 404) return 'That customer has no inbox for you (404). They need to add you as a business first.'
   }
+  if (e instanceof PodError && e.status >= 500) return `The pod server answered ${e.status}. Nothing is known to have been delivered: try again.`
   return e instanceof Error ? e.message : String(e)
 }
 
@@ -67,7 +68,7 @@ export function Console({ session }: { session: SolidSession }) {
   useEffect(() => {
     let dead = false
     store.profile(own).then((p) => {
-      const n = one(p, own, NS.foaf + 'name') ?? key
+      const n = DEMO_BUSINESSES.find((d) => d.user === key)?.name ?? one(p, own, NS.foaf + 'name')?.replace(/\s*\([^)]*\)\s*$/, '') ?? key
       if (!dead) {
         setIssuerName((cur) => cur || n)
         setIdentifier((cur) => cur || newId(prefixOf(n)))

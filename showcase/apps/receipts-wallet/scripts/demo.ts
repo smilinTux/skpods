@@ -12,7 +12,7 @@ import { PodStore } from '@skpods/solid-web'
 import { agentLogin, mintClientCredentials, type AgentSession } from '@skpods/solid-web/node'
 import { DEMO_BUSINESSES, DEMO_RECEIPTS, PRESETS } from '../src/lib/demo-data'
 import { buildReceiptTurtle, receiptSlug, type ReceiptInput } from '../src/lib/receipt'
-import { addBusiness, businessKey, inboxOf, loadBusinesses, loadReceipts, pathsFor, resetWallet, setupWallet, stopBusiness, type Wallet } from '../src/lib/wallet'
+import { addBusiness, businessKey, inboxOf, loadBusinesses, loadReceipts, pathsFor, retry, resetWallet, setupWallet, stopBusiness, type Wallet } from '../src/lib/wallet'
 
 for (const f of (process.env.SKP_TEST_ENV ?? '').split(':').filter(Boolean)) {
   for (const line of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -98,7 +98,8 @@ async function seed() {
           paymentMethod: r.paymentMethod,
           paymentRef: r.paymentRef,
         }
-        await biz.post(inboxOf(wallet, businessKey(s.webId)), buildReceiptTurtle(input), { slug: receiptSlug(input) })
+        // pods-dev now and then answers 500 (a Nextcloud error page) to writes under load: retry.
+        await retry(() => biz.post(inboxOf(wallet, businessKey(s.webId)), buildReceiptTurtle(input), { slug: receiptSlug(input) }), 4)
         sent++
       }
     }),

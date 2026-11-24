@@ -179,6 +179,22 @@ export async function pool<T, R>(items: T[], n: number, fn: (x: T) => Promise<R>
   return out
 }
 
+/** Retry transient failures (the engine now and then answers 5xx or resets under parallel load). */
+export async function retry<T>(fn: () => Promise<T>, tries = 3): Promise<T> {
+  let last: unknown
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      last = e
+      const status = (e as { status?: number }).status
+      if (status && status < 500 && status !== 429 && status !== 409) throw e
+      await new Promise((r) => setTimeout(r, 250 * (i + 1)))
+    }
+  }
+  throw last
+}
+
 const fileOf = (url: string) => decodeURIComponent(url.split('/').pop() ?? url)
 
 export interface LoadResult {
@@ -204,7 +220,7 @@ export async function loadReceipts(store: PodStore, w: Wallet, businesses: Busin
     const readOne = async (url: string): Promise<Receipt | undefined> => {
       const hit = cache.get(url)
       if (hit) return hit
-      const r = await store.get(url)
+      const r = await retry(() => store.get(url))
       const rec = r ? parseReceipt(r.text, url, b.key) : undefined
       if (!rec) {
         skipped.push(url)
@@ -213,7 +229,7 @@ export async function loadReceipts(store: PodStore, w: Wallet, businesses: Busin
       cache.set(url, rec)
       return rec
     }
-    const archivedRecs = await pool(archiveItems.filter((e) => !e.isContainer), 6, (e) => readOne(e.url).catch(() => undefined))
+    const archivedRecs = await pool(archiveItems.filter((e) => !e.isContainer), 6, (e) => readOne(e.url).catch((err) => (skipped.push(`${e.url}: ${(err as Error).message}`), undefined)))
     for (const r of archivedRecs) if (r) found.set(`${b.key}/${r.file}`, r)
 
     await pool(inboxItems.filter((e) => !e.isContainer), 6, async (e) => {
@@ -228,15 +244,15 @@ export async function loadReceipts(store: PodStore, w: Wallet, businesses: Busin
         }
         if (opts.file) {
           const dest = `${archiveOf(w, b.key)}${encodeURIComponent(file).replace(/%2E/g, '.')}`
-          await store.put(dest, rec.raw)
+          await retry(() => store.put(dest, rec.raw))
           const moved: Receipt = { ...rec, url: dest }
           cache.set(dest, moved)
           await store.delete(e.url).catch(() => false)
           filed.push(moved)
           found.set(`${b.key}/${file}`, moved)
         } else found.set(`${b.key}/${file}`, rec)
-      } catch {
-        skipped.push(e.url)
+      } catch (err) {
+        skipped.push(`${e.url}: ${(err as Error).message}`)
       }
     })
   })

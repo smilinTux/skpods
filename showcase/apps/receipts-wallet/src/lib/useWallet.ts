@@ -79,7 +79,7 @@ export function useWallet(session: SolidSession) {
   // arrivals: poll the inboxes (no notifications on this engine), file what shows up
   useEffect(() => {
     if (phase !== 'ready') return
-    const t = setInterval(async () => {
+    const check = async () => {
       const w = walletRef.current
       if (!w || document.hidden || loading.current) return
       try {
@@ -87,8 +87,13 @@ export function useWallet(session: SolidSession) {
       } catch {
         /* next tick */
       }
-    }, POLL_MS)
-    return () => clearInterval(t)
+    }
+    const t = setInterval(check, POLL_MS)
+    document.addEventListener('visibilitychange', check) // look straight away when the tab comes back
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', check)
+    }
   }, [phase, store, load])
 
   const run = async <T,>(fn: () => Promise<T>, fail: string): Promise<T | undefined> => {
@@ -96,7 +101,7 @@ export function useWallet(session: SolidSession) {
     try {
       return await fn()
     } catch (e) {
-      toast({ title: fail, description: (e as Error).message, tone: 'error', duration: 8000 })
+      toast({ title: fail, description: (e as Error).message.slice(0, 180), tone: 'error', duration: 8000 })
     } finally {
       setBusy(false)
     }

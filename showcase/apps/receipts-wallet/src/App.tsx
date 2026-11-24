@@ -29,7 +29,8 @@ function useProfileName(session: SolidSession | undefined, webId?: string) {
   const [name, setName] = useState<string>()
   useEffect(() => {
     if (!session || !webId) return setName(undefined)
-    new PodStore(session.fetch).profile(webId).then((p) => setName(one(p, webId, NS.foaf + 'name'))).catch(() => {})
+    // Test profiles carry a trailing "(... test)" note from the server seed: show the plain name.
+    new PodStore(session.fetch).profile(webId).then((p) => setName(one(p, webId, NS.foaf + 'name')?.replace(/\s*\([^)]*\)\s*$/, ''))).catch(() => {})
   }, [session, webId])
   return name
 }
@@ -134,10 +135,22 @@ function Inner() {
   const session = useSession()
   const active = Boolean(session && session.state === 'active' && session.webId)
   const name = useProfileName(session, active ? session!.webId : undefined)
-  const [mode, setModeState] = useState<Mode>(() => (location.hash === '#console' ? 'console' : 'wallet'))
+  const [mode, setModeState] = useState<Mode>(() => {
+    try {
+      if (sessionStorage.getItem('receipts-wallet:mode') === 'console') return 'console'
+    } catch {
+      /* storage blocked */
+    }
+    return location.hash === '#console' ? 'console' : 'wallet'
+  })
   const [tab, setTab] = useState<Tab>('receipts')
   const setMode = (m: Mode) => {
     setModeState(m)
+    try {
+      sessionStorage.setItem('receipts-wallet:mode', m)
+    } catch {
+      /* storage blocked */
+    }
     history.replaceState(null, '', m === 'console' ? '#console' : location.pathname + location.search)
   }
   if (!session) return <div className="flex min-h-screen items-center justify-center"><Skeleton className="h-10 w-48" /></div>
