@@ -1,0 +1,36 @@
+@prefix skp:  <https://w3id.org/skpods/v1#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <http://schema.org/> .
+
+# Receipts Wallet terms. Receipts are schema:Invoice or schema:Order with schema:OrderItem lines; only the
+# terms below are added where schema.org has no good fit for a flat, human readable receipt.
+
+skp:ReceiptIssuer a owl:Class ;
+    rdfs:label "Receipt issuer" ;
+    rdfs:comment "A business the pod owner allows to deliver receipts (record kept in the owner's pod under skpods/v1/receipts/businesses/)." .
+
+skp:inboxKey a owl:DatatypeProperty ;
+    rdfs:domain skp:ReceiptIssuer ;
+    rdfs:comment "Name of the business's own Append-only inbox container, derived from its WebID." .
+
+skp:status a owl:DatatypeProperty ;
+    rdfs:domain skp:ReceiptIssuer ;
+    rdfs:comment "active (the business holds an Append grant) or stopped (the grant was removed; receipts already delivered stay)." .
+
+skp:stoppedAt a owl:DatatypeProperty ;
+    rdfs:domain skp:ReceiptIssuer ;
+    rdfs:comment "When the owner removed the business's append right." .
+
+skp:subtotal a owl:DatatypeProperty ;
+    rdfs:comment "Sum of the line totals before tax, xsd:decimal in the receipt currency." .
+
+skp:taxRate a owl:DatatypeProperty ;
+    rdfs:comment "Tax rate applied to the subtotal as a fraction (0.0825 is 8.25 percent)." .
+
+skp:taxTotal a owl:DatatypeProperty ;
+    rdfs:comment "Tax amount, xsd:decimal in the receipt currency." .
+
+skp:lineTotal a owl:DatatypeProperty ;
+    rdfs:domain schema:OrderItem ;
+    rdfs:comment "Quantity times unit price for one line, xsd:decimal." .
