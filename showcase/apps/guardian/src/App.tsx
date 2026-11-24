@@ -94,7 +94,7 @@ function Signed({ session }: { session: SolidSession }) {
 
   const waiting = g.current?.items.filter((i) => i.status === 'awaiting_owner').length ?? 0
   const nav: NavItem[] = [
-    { id: 'live', label: 'Live', icon: <TheatreIcon size={16} />, badge: waiting || undefined },
+    { id: 'live', label: waiting ? `Live (${waiting})` : 'Live', icon: <TheatreIcon size={16} /> },
     { id: 'policy', label: 'Rules', icon: <SlidersIcon size={16} /> },
     { id: 'audit', label: 'Audit', icon: <ListIcon size={16} /> },
   ]

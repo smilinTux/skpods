@@ -67,15 +67,25 @@ export function PolicyEditor({ onReplay }: { onReplay: () => void }) {
     setSaving(true)
     try {
       await savePolicyDoc(g.store, g.root, draft)
-      const live = await g.reloadPolicy()
-      setBase(draft)
-      setSaved({ m: structuredClone(matrix), d: { ...durs } })
-      toast({ title: 'Saved to your pod', description: `The guardian now reads version ${live.version} (${live.rules.length} rules). The next request follows it.`, tone: 'success' })
     } catch (e) {
       toast({ title: 'Could not save your rules', description: (e as Error).message, tone: 'error', duration: 8000 })
-    } finally {
       setSaving(false)
+      return
     }
+    // The file is in the pod. Now ask the guardian to read it back, as proof it will follow it from the next request on.
+    setBase(draft)
+    setSaved({ m: structuredClone(matrix), d: { ...durs } })
+    setSaving(false)
+    let live: Policy | undefined
+    for (let i = 0; i < 3 && !live; i++) {
+      try {
+        live = await g.reloadPolicy()
+      } catch {
+        await new Promise((r) => setTimeout(r, 700))
+      }
+    }
+    if (live) toast({ title: 'Saved to your pod', description: `The guardian now reads version ${live.version} (${live.rules.length} rules). The next request follows it.`, tone: 'success' })
+    else toast({ title: 'Saved to your pod', description: 'The guardian service has not confirmed that it can read the new version yet. Try the replay in a moment.', tone: 'warn', duration: 8000 })
   }
   const reset = () => {
     setMatrix(structuredClone(DEFAULT_MATRIX))
@@ -106,7 +116,7 @@ export function PolicyEditor({ onReplay }: { onReplay: () => void }) {
                   <label className={cx('flex items-center gap-2 text-xs text-muted transition', !anyAuto && 'opacity-40')}>
                     Auto lasts up to
                     <select disabled={!anyAuto} value={durs[c]} onChange={(e) => setDurs((d) => ({ ...d, [c]: e.target.value }))} className="rounded-lg border border-line bg-surface-2 px-2 py-1 font-mono text-xs text-ink" aria-label={`Longest automatic access for ${CLASS_LABEL[c]}`}>
-                      {DURS.map((d) => <option key={d}>{d}</option>)}
+                      {(DURS.includes(durs[c]) ? DURS : [...DURS, durs[c]]).map((d) => <option key={d}>{d}</option>)}
                     </select>
                   </label>
                 )}

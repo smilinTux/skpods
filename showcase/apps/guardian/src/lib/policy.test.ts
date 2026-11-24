@@ -46,6 +46,13 @@ test('toggles round trip through rules', () => {
   assert.equal(evaluate(buildPolicy(base, m, d), 'insurance_member_id', 'clinic', booked).durationS, 3600)
 })
 
+test('default durations survive a round trip as the editor options', () => {
+  const back = deriveMatrix(policy())
+  assert.equal(back.durations.dob, '72h')
+  assert.equal(back.durations.allergies, '72h')
+  assert.deepEqual(back.matrix, DEFAULT_MATRIX)
+})
+
 test('ssn keeps its counter offer and later rules are marked unreached', () => {
   const t = trace(policy(), 'ssn', 'clinic', booked)
   assert.equal(t.matched?.id, 'never-share-ssn')

@@ -58,11 +58,11 @@ function ItemCard({ req, item, policy, open, onToggle, events, focused }: { req:
   const baseReason = gd?.reason ?? dec.reason
   return (
     <section data-testid={`think-${item.data_class}`} data-focused={focused || undefined} className={cx('rounded-2xl border bg-surface transition-all duration-500', focused ? 'border-brand/50 shadow-glow' : 'border-line')}>
-      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-3 px-4 py-3 text-left">
+      <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 text-left">
         <span className={cx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', out.tone === 'good' || out.tone === 'brand' ? 'bg-ok/15 text-ok' : out.tone === 'bad' ? 'bg-danger/15 text-danger' : out.tone === 'warn' ? 'bg-warn/15 text-warn' : 'bg-surface-2 text-muted')}>
           {out.tone === 'bad' ? <XIcon size={16} /> : out.tone === 'warn' ? <ClockIcon size={16} /> : <CheckIcon size={16} />}
         </span>
-        <div className="min-w-0 flex-1 leading-tight">
+        <div className="min-w-[8rem] flex-1 leading-tight">
           <p className="truncate text-sm font-semibold">{CLASS_LABEL[item.data_class] ?? item.label}</p>
           <p className="truncate font-mono text-[11px] text-muted">{item.decision.rule_id ?? 'no rule matched'}</p>
         </div>
@@ -85,7 +85,7 @@ function ItemCard({ req, item, policy, open, onToggle, events, focused }: { req:
           <Step i={n++} icon={<ShieldIcon size={13} />} title={tr ? `Walks Alice's rules, top to bottom (${policy!.rules.length})` : 'Reads her rules'}>
             {tr ? (
               <ul className="mt-1 space-y-1" data-testid={`rules-${item.data_class}`}>
-                {tr.steps.filter((s) => s.state !== 'unreached' || false).map((s) => (
+                {tr.steps.filter((s) => s.state !== 'unreached' && s.checks[0]?.ok).map((s) => (
                   <li key={s.rule.id} className={cx('rounded-lg border px-2 py-1.5', s.state === 'matched' ? 'border-brand/50 bg-brand/10' : 'border-line bg-surface-2/60 opacity-80')}>
                     <div className="flex items-center gap-2">
                       <span className={cx('font-mono text-[11px] font-semibold', s.state === 'matched' ? 'text-brand' : 'text-muted')}>{s.rule.id}</span>
@@ -94,6 +94,7 @@ function ItemCard({ req, item, policy, open, onToggle, events, focused }: { req:
                     <div className="mt-1 flex flex-wrap gap-1">{s.checks.map((c, i) => <Check key={i} ok={c.ok}>{c.label}</Check>)}</div>
                   </li>
                 ))}
+                {tr.steps.some((s) => s.state !== 'unreached' && !s.checks[0]?.ok) && <li className="px-1 text-[11px] text-muted">{tr.steps.filter((s) => s.state !== 'unreached' && !s.checks[0]?.ok).length} rules about other data classes: skipped.</li>}
                 {tr.steps.some((s) => s.state === 'unreached') && <li className="px-1 text-[11px] text-muted">{tr.steps.filter((s) => s.state === 'unreached').length} more rule(s) not reached: the first match wins.</li>}
                 {!tr.matched && <li className="px-1 text-[11px] text-muted">No rule covers this, so the safe default applies: ask Alice.</li>}
                 {!agrees && <li className="rounded-lg border border-warn/40 bg-warn/10 px-2 py-1 text-[11px] text-warn">This replay uses today's rules and differs from the rule the service applied ({item.decision.rule_id ?? 'none'}). The rules were probably edited since.</li>}

@@ -100,6 +100,8 @@ export function deriveMatrix(p: Policy): { matrix: Matrix; durations: Durations 
 }
 
 export function toDurationString(s: number): string {
+  // Hours up to 72 (the editor offers 1h, 24h, 72h, 7d), days beyond that.
+  if (s % 3600 === 0 && s <= 72 * 3600) return `${s / 3600}h`
   if (s % 86400 === 0) return `${s / 86400}d`
   if (s % 3600 === 0) return `${s / 3600}h`
   if (s % 60 === 0) return `${s / 60}m`

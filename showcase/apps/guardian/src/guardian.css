@@ -20,7 +20,7 @@
 
 .stage { position: relative; }
 .stage::before {
-  content: ''; position: absolute; inset: -40px -20px; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: -40px -12px; z-index: -1; pointer-events: none;
   background:
     radial-gradient(40rem 22rem at 50% 38%, rgb(var(--skp-brand) / .13), transparent 70%),
     radial-gradient(28rem 20rem at 85% 10%, rgb(var(--skp-warm) / .08), transparent 70%);

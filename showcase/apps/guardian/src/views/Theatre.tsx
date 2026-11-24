@@ -24,7 +24,7 @@ export interface TheatreProps {
 function Slot({ id, panel, spot, hl, children, label }: { id: Panel; panel: Panel; spot: Spot; hl: Spot[]; children: React.ReactNode; label: string }) {
   const lit = spot && hl.includes(spot)
   return (
-    <div className={cx('panel-slot flex min-h-0 flex-col', panel === id ? 'flex' : 'hidden xl:flex', spot && !lit && 'dim')} data-panel={id}>
+    <div className={cx('panel-slot flex min-h-0 min-w-0 flex-col', panel === id ? 'flex' : 'hidden xl:flex', spot && !lit && 'dim')} data-panel={id}>
       <div className="panel-label"><span className={cx('h-1.5 w-1.5 rounded-full', lit ? 'bg-brand animate-pulse-ring' : 'bg-muted/60')} />{label}</div>
       <div className={cx('flex min-h-0 flex-1 flex-col rounded-2xl', lit && 'spot')}>{children}</div>
     </div>
@@ -51,7 +51,7 @@ export function Theatre(p: TheatreProps) {
           </button>
         ))}
       </div>
-      <div className="grid gap-5 xl:h-[calc(100vh-9.6rem)] xl:min-h-[640px] xl:grid-cols-[minmax(340px,1fr)_minmax(420px,1.12fr)_400px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:h-[calc(100vh-9.6rem)] xl:min-h-[640px] xl:grid-cols-[minmax(340px,1fr)_minmax(420px,1.12fr)_400px]">
         <Slot id="clinic" panel={p.panel} spot={p.spot} hl={['clinic']} label="The clinic's screen">
           <ClinicPanel className="max-h-[calc(100dvh-14rem)] min-h-[28rem] xl:max-h-none xl:flex-1" />
         </Slot>
