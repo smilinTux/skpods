@@ -95,7 +95,7 @@ function AddBusiness({ api }: { api: WalletApi }) {
   return (
     <Card title="Let a business send you receipts" subtitle="It gets its own inbox in your pod, with one right: add a file.">
       <form
-        className="grid gap-3 sm:grid-cols-2"
+        className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault()
           void submit(name, webId.trim(), category)
@@ -136,7 +136,7 @@ export function Businesses({ api }: { api: WalletApi }) {
       {api.businesses.length === 0 ? (
         <Card><EmptyState icon={Icon.store} title="No business can send you receipts yet" hint="Allow a business below. It will get an inbox that only accepts new files, nothing more." /></Card>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-2">
           {api.businesses.map((b) => <BusinessCard key={b.key} api={api} b={b} mine={api.receipts.filter((r) => r.business === b.key)} />)}
         </div>
       )}

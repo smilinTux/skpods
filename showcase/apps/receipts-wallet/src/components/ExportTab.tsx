@@ -26,7 +26,7 @@ export function ExportTab({ receipts, filters, owner }: { receipts: Receipt[]; f
           </div>
         )}
         <p className="mb-4 text-sm text-muted" data-testid="export-summary">{list.length} receipts, {money(total)} in total.</p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
           <div className="flex flex-col gap-2 rounded-xl border border-line p-4">
             <h3 className="text-sm font-semibold">Receipts CSV</h3>
             <p className="flex-1 text-xs text-muted">One row per receipt: date, business, category, subtotal, tax, total, payment reference.</p>

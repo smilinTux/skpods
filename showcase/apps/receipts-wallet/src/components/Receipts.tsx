@@ -11,10 +11,10 @@ import { ReceiptDetail } from './ReceiptDetail'
 
 function Stat({ label, value, sub, testid }: { label: string; value: React.ReactNode; sub?: React.ReactNode; testid?: string }) {
   return (
-    <div className="rounded-xl bg-surface-2 px-4 py-3">
-      <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums" data-testid={testid}>{value}</p>
-      {sub && <p className="text-xs text-muted">{sub}</p>}
+    <div className="min-w-0 rounded-xl bg-surface-2 px-3 py-2.5 sm:px-4 sm:py-3">
+      <p className="truncate text-[10px] uppercase tracking-wide text-muted sm:text-xs">{label}</p>
+      <p className="mt-0.5 truncate text-lg font-bold sm:text-2xl tracking-tight tabular-nums" data-testid={testid}>{value}</p>
+      {sub && <p className="truncate text-[11px] text-muted sm:text-xs">{sub}</p>}
     </div>
   )
 }
@@ -86,14 +86,14 @@ export function Receipts({ receipts, businesses, filters, setFilters, loading }:
   return (
     <div className="space-y-5">
       <Card glow className="!overflow-visible">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <Stat label={isFiltered(filters) ? 'In this view' : 'Kept in your pod'} value={<Money cents={total} />} sub={`${shown.length} receipt${shown.length === 1 ? '' : 's'}`} testid="stat-total" />
           <Stat label="This month" value={<Money cents={thisMonth} />} sub={monthLabel(monthKey(new Date()))} />
-          <Stat label="Businesses" value={businesses.filter((b) => b.status === 'active').length} sub={`${businesses.length} known, ${businesses.filter((b) => b.status === 'stopped').length} stopped`} />
+          <Stat label="Businesses" value={businesses.filter((b) => b.status === 'active').length} sub={`${businesses.filter((b) => b.status === 'stopped').length} stopped`} />
         </div>
       </Card>
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
         <Card title="Where it went" subtitle="Tap a category to filter">
           <Bars rows={cats} total={forCategories.reduce((a, r) => a + r.total, 0)} onPick={(k) => toggle('category', k)} active={filters.category} label="Totals per category" />
         </Card>

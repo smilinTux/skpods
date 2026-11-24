@@ -65,6 +65,26 @@ async function logIn(page: Page, who: 'ALICE' | 'PRACTITIONER') {
 
 const nav = (page: Page, label: string) => page.locator('nav[aria-label=Primary]:visible').getByRole('button', { name: new RegExp(`^${label}`) })
 
+/** Wait for the timeline; on failure leave a screenshot and the visible text so a flaky engine run can be diagnosed. */
+async function rows(page: Page, name: string) {
+  try {
+    await page.getByTestId('receipt-row').first().waitFor({ timeout: 60_000 })
+  } catch (e) {
+    fs.mkdirSync(shots, { recursive: true })
+    await page.screenshot({ path: path.join(shots, `FAILED-${name}.png`) })
+    throw new Error(`no timeline for ${name}: ${(await page.locator('body').innerText()).slice(0, 400)}`, { cause: e })
+  }
+}
+
+/** Elements that stick out past the right edge of the viewport (empty when the page fits). */
+const overflowing = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('body *')]
+      .filter((e) => e.getBoundingClientRect().right > window.innerWidth + 1 && !e.closest('[hidden]') && !e.closest('.overflow-x-auto') && getComputedStyle(e).position !== 'fixed')
+      .slice(0, 5)
+      .map((e) => `${e.tagName}.${String(e.className).slice(0, 60)}`),
+  )
+
 async function snap(page: Page, name: string) {
   await page.waitForTimeout(450) // let entrance animations finish
   fs.mkdirSync(shots, { recursive: true })
@@ -110,7 +130,7 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
     await alice.getByTestId('login').waitFor()
     await snap(alice, '01-welcome')
     await logIn(alice, 'ALICE')
-    await alice.getByTestId('receipt-row').first().waitFor({ timeout: 60_000 })
+    await rows(alice, 'alice')
     expect(await alice.getByTestId('receipt-row').count()).toBe(20)
     await alice.waitForTimeout(600)
     await snap(alice, '02-timeline')
@@ -236,17 +256,30 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
     const p = await phone.newPage()
     await p.goto(APP)
     await logIn(p, 'ALICE')
-    await p.getByTestId('receipt-row').first().waitFor({ timeout: 60_000 })
+    await rows(p, 'phone')
     await snap(p, '13-phone-timeline')
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+    expect(await overflowing(p)).toEqual([])
     await p.getByTestId('receipt-row').first().click()
     await p.getByTestId('detail').waitFor()
     await snap(p, '14-phone-detail')
     await p.keyboard.press('Escape')
     await nav(p, 'Businesses').click()
     await p.getByTestId('business-card').first().waitFor()
+    await p.getByTestId('rights').first().waitFor({ timeout: 30_000 })
     await snap(p, '15-phone-businesses')
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+    expect(await overflowing(p)).toEqual([])
+    await nav(p, 'Export').click()
+    await p.getByTestId('export-summary').waitFor()
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+    await nav(p, 'Businesses').click()
     await nav(p, 'Receipts').click()
+    await p.getByRole('tab', { name: 'Business console' }).click()
+    await p.getByTestId('console-name').waitFor({ timeout: 30_000 })
+    await snap(p, '17-phone-console')
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+    await p.getByRole('tab', { name: 'My wallet' }).click()
     await p.evaluate(() => (document.documentElement.dataset.theme = 'dark'))
     await snap(p, '16-phone-dark')
     await phone.close()

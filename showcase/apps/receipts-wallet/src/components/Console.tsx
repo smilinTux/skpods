@@ -159,7 +159,7 @@ export function Console({ session }: { session: SolidSession }) {
         </div>
       </Card>
 
-      <div className="grid gap-5 lg:grid-cols-5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-5">
         <Card title="Issue a receipt" subtitle="Appended to the customer's inbox for you" className="lg:col-span-3">
           <div className="mb-4 flex flex-wrap gap-2" aria-label="Quick starts">
             {PRESETS.map((p, i) => (
@@ -167,7 +167,7 @@ export function Console({ session }: { session: SolidSession }) {
             ))}
           </div>
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void send() }}>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><Field label="Customer WebID" hint="Their pod is found from this. The delivery address is your own inbox in it."><input className={cx(inputCls, 'font-mono')} value={customer} onChange={(e) => setCustomer(e.target.value)} required inputMode="url" placeholder="https://.../profile/card#me" data-testid="customer" /></Field></div>
               <Field label="Issuer name on the receipt"><input className={inputCls} value={issuerName} onChange={(e) => setIssuerName(e.target.value)} required /></Field>
               <Field label="Receipt number"><input className={cx(inputCls, 'font-mono')} value={identifier} onChange={(e) => setIdentifier(e.target.value)} required /></Field>
@@ -198,7 +198,7 @@ export function Console({ session }: { session: SolidSession }) {
               <button type="button" className="text-sm font-semibold text-brand hover:underline" onClick={() => setRows((l) => [...l, { name: '', qty: '1', unit: '0.00' }])}>+ Add a line</button>
             </fieldset>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
               <Field label="Tax rate, percent"><input className={cx(inputCls, 'tabular-nums')} value={taxPct} onChange={(e) => setTaxPct(e.target.value)} inputMode="decimal" /></Field>
               <Field label="Paid with">
                 <select className={inputCls} value={method} onChange={(e) => setMethod(e.target.value)}>{PAYMENT_METHODS.map((m) => <option key={m}>{m}</option>)}</select>
