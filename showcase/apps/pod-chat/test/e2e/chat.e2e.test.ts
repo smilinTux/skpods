@@ -36,6 +36,7 @@ async function waitFor(url: string, ms = 30_000) {
 const loginAs = (page: Page, who: string) => login(page, who)
 
 const shot = async (page: Page, name: string) => {
+  await page.waitForTimeout(900) // let entry animations settle
   fs.mkdirSync(shots, { recursive: true })
   await page.screenshot({ path: path.join(shots, `${name}.png`) })
 }

@@ -133,7 +133,7 @@ export function ChatView({ engine, convId, me, onBack }: { engine: ChatEngine; c
               </div>
             )}
             {d.items.map((it) => {
-              if (it.t === 'day') return <div key={it.key} className="sticky top-1 z-10 my-3 flex justify-center"><span className="rounded-full bg-surface/90 px-3 py-1 text-[11px] font-medium text-muted shadow-sm ring-1 ring-line backdrop-blur">{dayLabel(it.at)}</span></div>
+              if (it.t === 'day') return <div key={it.key} className="my-3 flex justify-center"><span className="rounded-full bg-surface px-3 py-1 text-[11px] font-medium text-muted shadow-sm ring-1 ring-line">{dayLabel(it.at)}</span></div>
               if (it.t === 'system') return <SystemLine key={it.key} item={it} who={(w) => (w === me ? 'You' : who(w).name)} />
               if (it.t === 'ghost') return <GhostLine key={it.key} item={it} who={(w) => who(w).name} />
               const isSel = selected === it.msg.id
@@ -192,7 +192,7 @@ export function ChatView({ engine, convId, me, onBack }: { engine: ChatEngine; c
           />
         )}
         {!d.left && active === 0 && others.length > 0 && !d.loading && (
-          <p className="bg-surface px-4 pb-2 text-center text-xs text-muted" data-testid="nobody-here">Nobody else is sharing yet. Your messages wait in your pod until they join.</p>
+          <p className="bg-surface px-4 pb-2 text-center text-xs text-muted" data-testid="nobody-here">Nobody else is sharing right now. What you write stays in your pod, and they can read it only while they have access.</p>
         )}
       </section>
 

@@ -22,8 +22,8 @@ export function ConvFace({ members, me, kind, size = 'md' }: { members: Person[]
   const [a, b] = others
   return (
     <span className={cx('relative inline-block shrink-0', size === 'lg' ? 'h-14 w-14' : 'h-11 w-11')} aria-hidden>
-      <Avatar name={a.name} seed={a.webId} size="sm" className="absolute left-0 top-0 !h-8 !w-8" />
-      <Avatar name={b.name} seed={b.webId} size="sm" className="absolute bottom-0 right-0 !h-8 !w-8" />
+      <Avatar name={a.name} seed={a.webId} size="sm" className="absolute left-0 top-0 !h-7 !w-7 !text-[10px]" />
+      <Avatar name={b.name} seed={b.webId} size="sm" className="absolute bottom-0 right-0 !h-7 !w-7 !text-[10px]" />
     </span>
   )
 }
