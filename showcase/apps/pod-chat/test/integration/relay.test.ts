@@ -76,11 +76,14 @@ describe.skipIf(!haveEnv || !RELAY)('pod chat with the relay on pods-dev', () =>
     const sendStart = Date.now()
     await alice.send(convId, text)
     const sent = Date.now()
-    await until('the message in bob\'s detail', () => texts(bob, convId).includes(text), 3000)
+    // both within the bound: the ping arrived (push), and the message is in bob's detail. A scheduled poll that
+    // happens to land in the window may deliver the text first, but the ping must still arrive in time.
+    const pinged = () => bob.debugLog.some((l) => l.includes(`ping ${convId} message`))
+    await until('the ping and the message at bob', () => pinged() && texts(bob, convId).includes(text), 3000)
     const took = Date.now() - sent
     console.log(`relay push: send took ${sent - sendStart} ms, bob had the message ${took} ms after the send resolved`)
     expect(took).toBeLessThan(3000)
-    expect(bob.debugLog.some((l) => l.includes(`ping ${convId} message`))).toBe(true) // it came by push, not a poll
+    expect(pinged()).toBe(true)
   })
 
   it('bob offline gets the ping from his mailbox on reconnect', async () => {
@@ -111,7 +114,10 @@ describe.skipIf(!haveEnv || !RELAY)('pod chat with the relay on pods-dev', () =>
       const ws = new WebSocket(roomUrl)
       const frames: string[] = []
       const end = await new Promise<{ code?: number; ready: boolean }>((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error('neither ready nor close within 15 s')), 15_000)
+        const t = setTimeout(() => {
+          ws.close()
+          reject(new Error('neither ready nor close within 15 s'))
+        }, 15_000)
         ws.onopen = () => ws.send(JSON.stringify({ t: 'auth', v: 1, token, proof }))
         ws.onmessage = (e) => {
           frames.push(String(e.data))
