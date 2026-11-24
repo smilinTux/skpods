@@ -63,6 +63,8 @@ async function logIn(page: Page, who: 'ALICE' | 'PRACTITIONER') {
   await page.getByRole('button', { name: 'Allow' }).click({ timeout: 30_000 })
 }
 
+const nav = (page: Page, label: string) => page.locator('nav[aria-label=Primary]:visible').getByRole('button', { name: new RegExp(`^${label}`) })
+
 async function snap(page: Page, name: string) {
   await page.waitForTimeout(450) // let entrance animations finish
   fs.mkdirSync(shots, { recursive: true })
@@ -148,7 +150,7 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
   })
 
   it('exports CSV and the raw RDF zip', async () => {
-    await alice.getByTestId('tab-export').click()
+    await nav(alice, 'Export').click()
     await alice.getByTestId('export-summary').waitFor()
     await snap(alice, '06-export')
     const [csv] = await Promise.all([alice.waitForEvent('download'), alice.getByTestId('export-csv').click()])
@@ -159,7 +161,7 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
     const bytes = fs.readFileSync((await zip.path())!)
     expect(bytes.subarray(0, 2).toString()).toBe('PK')
     expect(bytes.readUInt16LE(bytes.length - 22 + 10)).toBe(21) // README plus 20 receipts
-    await alice.getByTestId('tab-receipts').click()
+    await nav(alice, 'Receipts').click()
   })
 
   it('a business issues a receipt from the console, cannot read it back, and it lands in alice\'s wallet live', async () => {
@@ -198,7 +200,7 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
   })
 
   it('switch provider: alice stops the clinic, it is refused, her old receipts stay', async () => {
-    await alice.getByTestId('tab-businesses').click()
+    await nav(alice, 'Businesses').click()
     const card = alice.locator('[data-testid=business-card][data-business=dw-practitioner]')
     await card.waitFor()
     await card.getByTestId('rights').filter({ hasText: 'append (POST) only' }).waitFor({ timeout: 30_000 })
@@ -220,11 +222,11 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
     // the old receipts are still there
     const { store } = await agent('ALICE')
     expect((await store.list(archiveOf('dw-practitioner'))).length).toBe(6)
-    await alice.getByTestId('tab-receipts').click()
+    await nav(alice, 'Receipts').click()
     expect(await alice.getByTestId('receipt-row').count()).toBe(21)
 
     // and she can allow them again
-    await alice.getByTestId('tab-businesses').click()
+    await nav(alice, 'Businesses').click()
     await card.getByTestId('resume').click()
     await card.getByTestId('status').filter({ hasText: 'Can deliver receipts' }).waitFor({ timeout: 30_000 })
   })
@@ -240,6 +242,13 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
     await p.getByTestId('receipt-row').first().click()
     await p.getByTestId('detail').waitFor()
     await snap(p, '14-phone-detail')
+    await p.keyboard.press('Escape')
+    await nav(p, 'Businesses').click()
+    await p.getByTestId('business-card').first().waitFor()
+    await snap(p, '15-phone-businesses')
+    await nav(p, 'Receipts').click()
+    await p.evaluate(() => (document.documentElement.dataset.theme = 'dark'))
+    await snap(p, '16-phone-dark')
     await phone.close()
   })
 })

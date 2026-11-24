@@ -88,7 +88,7 @@ function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
   )
 }
 
-function Wallet({ session, tab, setTab }: { session: SolidSession; tab: Tab; setTab: (t: Tab) => void }) {
+function Wallet({ session, tab }: { session: SolidSession; tab: Tab }) {
   const api = useWallet(session)
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
 
@@ -119,11 +119,6 @@ function Wallet({ session, tab, setTab }: { session: SolidSession; tab: Tab; set
 
   return (
     <div className="space-y-5">
-      <div role="tablist" aria-label="Wallet sections" className="hidden w-fit rounded-xl bg-surface-2 p-1 text-sm font-medium md:flex">
-        {([['receipts', 'Receipts'], ['businesses', 'Businesses'], ['export', 'Export']] as const).map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} data-testid={`tab-${id}`} onClick={() => setTab(id)} className={cx('rounded-lg px-4 py-1.5', tab === id ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink')}>{label}</button>
-        ))}
-      </div>
       {tab === 'receipts' && <Receipts receipts={api.receipts} businesses={api.businesses} filters={filters} setFilters={setFilters} loading={api.busy} />}
       {tab === 'businesses' && <Businesses api={api} />}
       {tab === 'export' && <ExportTab receipts={api.receipts} filters={filters} owner={session.webId!} />}
@@ -161,7 +156,7 @@ function Inner() {
       tagline="Receipts from every business, kept in your own pod"
       user={active ? { name: name ?? 'You', webId: session.webId! } : undefined}
       onLogout={active ? () => session.logout() : undefined}
-      widthClass="max-w-4xl"
+      widthClass="max-w-5xl"
       nav={showNav ? [{ id: 'receipts', label: 'Receipts', icon: Icon.receipt }, { id: 'businesses', label: 'Businesses', icon: Icon.store }, { id: 'export', label: 'Export', icon: Icon.export }] : undefined}
       activeNav={tab}
       onNav={(id) => setTab(id as Tab)}
@@ -169,7 +164,7 @@ function Inner() {
       {active ? (
         <>
           <ModeSwitch mode={mode} onChange={setMode} />
-          <div hidden={mode !== 'wallet'}><Wallet session={session} tab={tab} setTab={setTab} /></div>
+          <div hidden={mode !== 'wallet'}><Wallet session={session} tab={tab} /></div>
           <div hidden={mode !== 'console'}><Console session={session} /></div>
         </>
       ) : (
