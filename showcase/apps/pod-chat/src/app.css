@@ -1,0 +1,4 @@
+/* Pod Chat specific tweaks on top of the SKPods design system. */
+html, body, #root { height: 100%; }
+body { overflow: hidden; }
+.pc-scroll-fade { mask-image: linear-gradient(to bottom, transparent, #000 12px); }
