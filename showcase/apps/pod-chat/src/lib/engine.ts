@@ -37,6 +37,8 @@ export interface EngineOptions {
   contacts?: string[]
   cache?: FileCache
   onToast?: (t: Toast) => void
+  /** false: no background timers at all, the caller drives polling with refresh() (tests). Default true. */
+  autoPoll?: boolean
   /** Poll timing (ms). Foreground conversation vs the rest. */
   timing?: { activeBase: number; activeMax: number; idleBase: number; idleMax: number; hiddenPeerRecheck: number; indexEvery: number }
 }
@@ -140,6 +142,7 @@ export class ChatEngine {
   private activeId?: string
   private indexTimer?: ReturnType<typeof setTimeout>
   private stopped = false
+  private auto: boolean
   private myRoot = ''
   private memo = new Map<string, { v: number; value: unknown }>()
   status: 'idle' | 'loading' | 'ready' | 'error' = 'idle'
@@ -156,6 +159,7 @@ export class ChatEngine {
     this.onToast = o.onToast
     this.contactList = [...(o.contacts ?? [])]
     this.timing = o.timing ?? DEFAULT_TIMING
+    this.auto = o.autoPoll !== false
   }
 
   // ---------- subscription ----------
@@ -202,7 +206,7 @@ export class ChatEngine {
   }
 
   // ---------- lifecycle ----------
-  async start(opts: { autoPoll?: boolean } = {}): Promise<void> {
+  async start(): Promise<void> {
     this.status = 'loading'
     this.emit()
     try {
@@ -216,7 +220,7 @@ export class ChatEngine {
       this.emit()
       // pod setup (inbox so others can invite me) runs in the background, it is not needed to read
       void ensureInbox(this.store, this.me, this.myRoot, this.contactList).catch((e) => this.onToast?.({ title: 'Invitations are not set up', description: String(e.message ?? e), tone: 'warn' }))
-      if (opts.autoPoll !== false) this.scheduleIndex()
+      if (this.auto) this.scheduleIndex()
     } catch (e) {
       this.status = 'error'
       this.error = (e as Error).message
@@ -238,7 +242,10 @@ export class ChatEngine {
   /** One full refresh of the index and every conversation (tests, pull-to-refresh). */
   async refresh(): Promise<void> {
     await this.pollIndex()
-    for (const c of this.convs.values()) await this.pollConv(c)
+    for (const c of this.convs.values()) {
+      while (c.polling) await new Promise((r) => setTimeout(r, 40))
+      await this.pollConv(c)
+    }
   }
 
   setActive(id: string | undefined) {
@@ -298,7 +305,7 @@ export class ChatEngine {
     this.convs.set(meta.id, c)
     void this.learn(meta.participants)
     this.emit()
-    void this.pollConv(c).then(() => this.schedule(c))
+    if (this.auto) void this.pollConv(c).then(() => this.schedule(c))
     return c
   }
 
@@ -356,7 +363,7 @@ export class ChatEngine {
   }
 
   private kick(c: Conv) {
-    if (c.polling) return
+    if (!this.auto || c.polling) return
     clearTimeout(c.timer)
     void this.pollConv(c).then(() => this.schedule(c))
   }
@@ -383,7 +390,8 @@ export class ChatEngine {
       c.lastPollAt = Date.now()
       c.lastPollOk = !failed
       if (changed || wasOk !== c.lastPollOk) this.emit()
-      void this.maybeCompact(c)
+      if (this.auto) void this.maybeCompact(c)
+      else await this.maybeCompact(c)
     } finally {
       c.polling = false
     }
