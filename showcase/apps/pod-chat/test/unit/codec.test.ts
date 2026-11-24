@@ -51,7 +51,7 @@ describe('turtle codec', () => {
     expect(decodeLeft(encodeLeft(URL_, ME, 1_732_400_000_000), URL_)).toBe(1_732_400_000_000)
     const meta = { id: 'c-1', title: 'Family', kind: 'group' as const, creator: ME, participants: [ME, 'https://pod.test/apps/solid/~dw-bob/profile/card#me'], createdAt: 1_732_400_000_000 }
     expect(decodeConversation(encodeConversation(URL_, meta), URL_)).toEqual(meta)
-    const inv = { descriptor: URL_, sender: ME, title: 'Family', at: 1_732_400_000_000 }
+    const inv = { descriptor: URL_, sender: ME, title: 'Family', kind: 'group' as const, at: 1_732_400_000_000 }
     expect(decodeInvitation(encodeInvitation(URL_, inv), URL_)).toEqual({ url: URL_, ...inv })
   })
   it('lists container children and hides .acl', () => {

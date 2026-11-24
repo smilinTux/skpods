@@ -192,15 +192,17 @@ export interface Invitation {
   descriptor: string
   sender: string
   title: string
+  kind: 'direct' | 'group'
   at: number
 }
-export function encodeInvitation(fileUrl: string, d: { descriptor: string; sender: string; title: string; at?: number }): string {
+export function encodeInvitation(fileUrl: string, d: { descriptor: string; sender: string; title: string; kind: 'direct' | 'group'; at?: number }): string {
   const s = fileUrl + '#invite'
   return serializeTurtle([
     q(s, rdfType, iri(NS.skp + 'ChatInvitation')),
     q(s, NS.skp + 'conversation', iri(d.descriptor)),
     q(s, S + 'sender', iri(d.sender)),
     q(s, S + 'name', lit(d.title)),
+    q(s, NS.skp + 'kind', lit(d.kind)),
     q(s, S + 'dateCreated', dt(new Date(d.at ?? Date.now()).toISOString())),
   ])
 }
@@ -210,7 +212,7 @@ export function decodeInvitation(text: string, fileUrl: string): Invitation | un
   const descriptor = one(st, s, NS.skp + 'conversation')
   const sender = one(st, s, S + 'sender')
   if (!descriptor || !sender) return undefined
-  return { url: fileUrl, descriptor, sender, title: one(st, s, S + 'name') ?? 'Conversation', at: Date.parse(one(st, s, S + 'dateCreated') ?? '') || 0 }
+  return { url: fileUrl, descriptor, sender, title: one(st, s, S + 'name') ?? 'Conversation', kind: one(st, s, NS.skp + 'kind') === 'direct' ? 'direct' : 'group', at: Date.parse(one(st, s, S + 'dateCreated') ?? '') || 0 }
 }
 
 /** Children URLs of a container listing (`.acl` hidden). */

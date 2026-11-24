@@ -89,6 +89,7 @@ function Signed({ session }: { session: SolidSession }) {
   }, [session, me])
 
   useEffect(() => {
+    if (import.meta.env.DEV) (window as unknown as { __podchat?: ChatEngine }).__podchat = engine
     engine.onToast = (t) => toast(t)
     engine.onIncoming = (c) => toast({ title: c.title, description: `${c.author}: ${c.text}`, tone: 'info', action: { label: 'Open', onClick: () => setRoute(c.convId) } })
     void engine.start()

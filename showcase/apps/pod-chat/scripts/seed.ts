@@ -172,11 +172,22 @@ export async function seedDemo(log: (s: string) => void = () => {}, now = Date.n
       for (const w of [A.bob, A.grandma]) {
         const box = inboxUrl(w.root)
         const slug = `inv-${meta.id}.ttl`
-        await A.alice.store.post(box, encodeInvitation(box + slug, { descriptor: convUrl(A.alice.root, meta.id) + 'conversation.ttl', sender: A.alice.webId, title: meta.title, at: now - 24 * MIN }), { slug })
+        await A.alice.store.post(box, encodeInvitation(box + slug, { descriptor: convUrl(A.alice.root, meta.id) + 'conversation.ttl', sender: A.alice.webId, title: meta.title, kind: meta.kind, at: now - 24 * MIN }), { slug })
         log(`invited ${w.who} to ${meta.id}`)
       }
     }
   }
+}
+
+/** Every cast member signs in to the app once so their pod trusts the app origin (see browser.ts). Needs the dev server running. */
+export async function authoriseCast(log: (s: string) => void = () => {}) {
+  const { APP, ensureAuthorised } = await import('./browser')
+  try {
+    if (!(await fetch(APP)).ok) throw new Error('not up')
+  } catch {
+    return log(`The app is not running at ${APP}. Start it (npm run dev) and run: npm run demo:authorise`)
+  }
+  await ensureAuthorised(CAST, log)
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -185,6 +196,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(2)
   }
   const log = (s: string) => console.log(s)
-  void (process.argv.includes('--clean') ? cleanDemo(log) : seedDemo(log)).then(() => console.log('done'), (e) => { console.error(e); process.exit(1) })
+  const job = process.argv.includes('--clean')
+    ? cleanDemo(log)
+    : process.argv.includes('--authorise')
+      ? authoriseCast(log)
+      : seedDemo(log).then(() => authoriseCast(log))
+  void job.then(() => console.log('done'), (e) => { console.error(e); process.exit(1) })
 }
 export type { PodStore }

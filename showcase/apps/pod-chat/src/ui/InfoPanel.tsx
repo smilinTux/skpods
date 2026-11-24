@@ -8,7 +8,7 @@ import { Close, Copy, Database, Exit, Eye, Lock, Refresh } from './icons'
 const STATUS: Record<string, { label: string; tone: string; hint: string }> = {
   active: { label: 'Sharing', tone: 'bg-ok/10 text-ok border-ok/30', hint: 'Their pod lets you read their messages.' },
   left: { label: 'Left', tone: 'bg-surface-2 text-muted border-line', hint: 'They revoked access. Their messages are still in their pod, you just cannot read them.' },
-  hidden: { label: 'Not sharing', tone: 'bg-warn/10 text-warn border-warn/30', hint: 'They have not joined yet, or have revoked access without a leave notice. The pod answers "forbidden" either way.' },
+  hidden: { label: 'Not sharing', tone: 'bg-warn/10 text-warn border-warn/30', hint: 'They have not joined yet, have not opened Pod Chat once (their pod has to trust this app), or revoked access without a leave notice. The pod answers "forbidden" in every case.' },
   unknown: { label: 'Checking', tone: 'bg-surface-2 text-muted border-line', hint: '' },
   error: { label: 'Unreachable', tone: 'bg-danger/10 text-danger border-danger/30', hint: 'Could not reach their pod.' },
 }

@@ -108,7 +108,7 @@ export interface ConvDetail {
   title: string
   members: Person[]
   items: Item[]
-  peers: (PeerView & { name: string; count: number; root?: string })[]
+  peers: (PeerView & { name: string; count: number; root?: string; error?: string })[]
   left: boolean
   leftAt?: number
   myContainer: string
@@ -607,7 +607,7 @@ export class ChatEngine {
         title: this.titleOf(c.meta),
         members: c.meta.participants.map((w) => this.person(w)),
         items,
-        peers: views.map((v) => ({ ...v, name: this.person(v.webId).name, count: v.msgs.length, root: this.persons.get(v.webId)?.root })),
+        peers: views.map((v) => ({ ...v, name: this.person(v.webId).name, count: v.msgs.length, root: this.persons.get(v.webId)?.root, error: c.peers.get(v.webId)?.error })),
         left: this.isLeft(c),
         leftAt: mePeer.leftAt,
         myContainer: convUrl(this.myRoot, c.meta.id),
@@ -660,7 +660,7 @@ export class ChatEngine {
         const root = await this.people.rootOf(w)
         const box = inboxUrl(root)
         const slug = `inv-${meta.id}.ttl`
-        await this.store.post(box, encodeInvitation(box + slug, { descriptor: container + 'conversation.ttl', sender: this.me, title: meta.title }), { slug })
+        await this.store.post(box, encodeInvitation(box + slug, { descriptor: container + 'conversation.ttl', sender: this.me, title: meta.title, kind: meta.kind }), { slug })
       } catch {
         failed.push(this.person(w).name)
       }
@@ -871,7 +871,7 @@ export class ChatEngine {
     const box = inboxUrl(root)
     const slug = `inv-${convId}.ttl`
     const descriptor = convUrl(this.myRoot, convId) + 'conversation.ttl'
-    await this.store.post(box, encodeInvitation(box + slug, { descriptor, sender: this.me, title: c.meta.title }), { slug })
+    await this.store.post(box, encodeInvitation(box + slug, { descriptor, sender: this.me, title: c.meta.title, kind: c.meta.kind }), { slug })
   }
 
   // ---------- compaction ----------

@@ -47,7 +47,7 @@ export function ConversationList({ engine, me, name, activeId, onOpen, onNew, on
           <section aria-label="Invitations" className="mx-3 mb-2 space-y-2" data-testid="invitations">
             {invites.map((inv) => (
               <div key={inv.url} className="rounded-2xl border border-warm/40 bg-warm-soft/60 p-3 animate-pop" data-testid="invitation">
-                <p className="text-sm"><strong>{inv.senderName}</strong> invited you to <strong>{inv.title}</strong></p>
+                <p className="text-sm" data-testid="invitation-text">{inv.kind === 'direct' ? <><strong>{inv.senderName}</strong> wants to chat with you</> : <><strong>{inv.senderName}</strong> invited you to <strong>{inv.title}</strong></>}</p>
                 <p className="mt-0.5 text-xs text-muted">Joining lets the others read what you write, from your own pod.</p>
                 <div className="mt-2 flex gap-2">
                   <Button className="!py-1.5" loading={busyInvite === inv.url} onClick={() => onJoin(inv.url)} data-testid="invite-join">Join</Button>

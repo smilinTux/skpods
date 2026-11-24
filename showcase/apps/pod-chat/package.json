@@ -12,7 +12,8 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "demo": "tsx scripts/seed.ts",
     "demo:clean": "tsx scripts/seed.ts --clean",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "demo:authorise": "tsx scripts/seed.ts --authorise"
   },
   "dependencies": {
     "@skpods/solid-web": "*",

@@ -5,8 +5,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
+import { type Browser, type BrowserContext, type Page } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { ensureAuthorised, launch, loginAs as login } from '../../scripts/browser'
 import { actor, haveEnv, type Actor } from '../../scripts/env'
 import { drawingPng } from '../../scripts/png'
 import { cleanTestChats, seedDemo } from '../../scripts/seed'
@@ -32,16 +33,7 @@ async function waitFor(url: string, ms = 30_000) {
   throw new Error(`dev server did not start at ${url}`)
 }
 
-async function loginAs(page: Page, who: 'alice' | 'bob') {
-  await page.goto(APP)
-  await page.getByTestId('login').click()
-  await page.waitForURL(/\/login/, { timeout: 30_000 })
-  await page.fill('input[name=user]', process.env[`DW_${who.toUpperCase()}_USER`]!)
-  await page.fill('input[name=password]', process.env[`DW_${who.toUpperCase()}_PASSWORD`]!)
-  await page.click('button[type=submit]')
-  await page.getByRole('button', { name: 'Allow' }).click({ timeout: 30_000 })
-  await page.getByTestId('conversation-list').waitFor({ timeout: 45_000 })
-}
+const loginAs = (page: Page, who: string) => login(page, who)
 
 const shot = async (page: Page, name: string) => {
   fs.mkdirSync(shots, { recursive: true })
@@ -68,7 +60,8 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
       server = spawn(path.join(appDir, '../../node_modules/.bin/vite'), ['--port', '5176', '--strictPort'], { cwd: appDir, stdio: 'ignore' })
       await waitFor(APP)
     }
-    browser = await chromium.launch({ executablePath: process.env.SKP_CHROME ?? (fs.existsSync('/usr/bin/google-chrome-stable') ? '/usr/bin/google-chrome-stable' : undefined), headless: true })
+    await ensureAuthorised(['alice', 'bob', 'kid', 'practitioner', 'grandma']) // each pod must have trusted the app origin once, see scripts/browser.ts
+    browser = await launch()
     ctxA = await browser.newContext({ viewport: { width: 1280, height: 800 } })
     ctxB = await browser.newContext({ viewport: { width: 1280, height: 800 } })
     pa = await ctxA.newPage()
@@ -151,7 +144,7 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
 
   it('Bob sees the invitation, joins, and receives the message from Alice\'s pod', async () => {
     await loginAs(pb, 'bob')
-    const inv = pb.getByTestId('invitation').filter({ hasText: 'Alice Rivera' })
+    const inv = pb.getByTestId('invitation').filter({ hasText: 'wants to chat with you' })
     await inv.waitFor(WAIT)
     await shot(pb, 'desktop-invitation')
     await inv.getByTestId('invite-join').click()
