@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens are space separated RGB triplets so Tailwind opacity modifiers work. */
+:root {
+  --skp-bg: 246 248 252;
+  --skp-surface: 255 255 255;
+  --skp-surface-2: 240 244 250;
+  --skp-line: 221 228 240;
+  --skp-ink: 11 21 48;
+  --skp-muted: 94 107 138;
+  --skp-brand: 13 148 136;
+  --skp-brand-soft: 204 244 238;
+  --skp-brand-ink: 255 255 255;
+  --skp-warm: 217 119 6;
+  --skp-warm-soft: 254 236 200;
+  --skp-ok: 22 163 74;
+  --skp-warn: 202 138 4;
+  --skp-danger: 220 38 38;
+  --skp-shadow: 11 21 48;
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  --skp-bg: 7 13 31;
+  --skp-surface: 15 26 56;
+  --skp-surface-2: 21 35 74;
+  --skp-line: 36 54 104;
+  --skp-ink: 233 239 252;
+  --skp-muted: 150 165 200;
+  --skp-brand: 45 212 191;
+  --skp-brand-soft: 16 70 74;
+  --skp-brand-ink: 6 20 28;
+  --skp-warm: 251 176 64;
+  --skp-warm-soft: 79 52 12;
+  --skp-ok: 74 222 128;
+  --skp-warn: 250 204 21;
+  --skp-danger: 248 113 113;
+  --skp-shadow: 0 0 0;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --skp-bg: 7 13 31;
+    --skp-surface: 15 26 56;
+    --skp-surface-2: 21 35 74;
+    --skp-line: 36 54 104;
+    --skp-ink: 233 239 252;
+    --skp-muted: 150 165 200;
+    --skp-brand: 45 212 191;
+    --skp-brand-soft: 16 70 74;
+    --skp-brand-ink: 6 20 28;
+    --skp-warm: 251 176 64;
+    --skp-warm-soft: 79 52 12;
+    --skp-ok: 74 222 128;
+    --skp-warn: 250 204 21;
+    --skp-danger: 248 113 113;
+    --skp-shadow: 0 0 0;
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  html { @apply bg-bg text-ink font-sans antialiased; }
+  body { @apply min-h-screen; background-image: radial-gradient(60rem 28rem at 85% -10%, rgb(var(--skp-brand) / 0.10), transparent 60%), radial-gradient(40rem 24rem at -10% 0%, rgb(var(--skp-warm) / 0.06), transparent 60%); background-attachment: fixed; }
+  :focus-visible { @apply outline-none ring-2 ring-brand ring-offset-2 ring-offset-bg; }
+  ::selection { background: rgb(var(--skp-brand) / 0.3); }
+}
+
+@layer components {
+  .skp-card { @apply rounded-2xl border border-line bg-surface shadow-card; }
+  .skp-btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none; }
+  .skp-btn-primary { @apply skp-btn bg-brand text-brand-ink hover:shadow-glow; }
+  .skp-btn-secondary { @apply skp-btn border border-line bg-surface-2 text-ink hover:border-brand/60; }
+  .skp-btn-danger { @apply skp-btn bg-danger/10 text-danger border border-danger/30 hover:bg-danger/15; }
+  .skp-btn-ghost { @apply skp-btn text-muted hover:text-ink hover:bg-surface-2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

@@ -1,0 +1,15 @@
+@prefix skp:  <https://w3id.org/skpods/v1#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dct:  <http://purl.org/dc/terms/> .
+
+# Vocabulary for the SKPods showcase apps. Reuse schema.org, vcard, FOAF and Solid terms first;
+# add a term here only when none of them fits. Each app adds its own terms in its own section.
+
+<https://w3id.org/skpods/v1> a owl:Ontology ;
+    dct:title "SKPods showcase vocabulary" ;
+    rdfs:comment "Terms used by the SKPods showcase apps (consent, receipts, chat, guardian)." .
+
+# ---- foundation (solid-web tests) ----
+# No terms yet. The solid-web integration tests only use skp:ShowcaseTest* class IRIs as throwaway
+# type index registrations and remove them again.
