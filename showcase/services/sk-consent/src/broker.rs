@@ -709,7 +709,8 @@ pub fn grant_ttl(g: &Grant, root: &str) -> String {
         "<#it> a skp:ConsentGrant ;\n  skp:grantedTo {} ;\n  skp:subject {} ;\n  skp:request {} ;\n  skp:resource {} ;\n  skp:mode acl:Read ;\n  skp:validFrom {}^^xsd:dateTime ;\n  skp:validUntil {}^^xsd:dateTime ;\n  skp:status {} ;\n  skp:approver {}",
         ttl_iri(&g.grantee), ttl_iri(&g.subject),
         ttl_iri(&format!("{root}skpods/v1/consents/requests/{}.ttl#it", g.request_id)),
-        ttl_iri(&g.resource), ttl_lit(&ts(g.starts)), ttl_lit(&ts(g.ends)), term, ttl_lit(&g.approved_by)
+        ttl_iri(&g.resource), ttl_lit(&ts(g.starts)), ttl_lit(&ts(g.ends)), term,
+        if g.approved_by.starts_with("http") { ttl_iri(&g.approved_by) } else { ttl_lit(&g.approved_by) }
     ));
     if let Some(r) = g.revoked_at {
         t.push_str(&format!(" ;\n  skp:revokedAt {}^^xsd:dateTime", ttl_lit(&ts(r))));
