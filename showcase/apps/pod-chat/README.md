@@ -43,10 +43,7 @@ alice's pod                          bob's pod
   is invisible. Deleting a message inside an archive rewrites that archive.
 * **Merge.** The client reads every participant's container, merges by send time (id = epoch ms plus a random tail),
   and only accepts a message in an author's pod if its `schema:author` is that pod's owner.
-* **Live-ish updates.** No push on this engine (see ENGINE-NOTES.md), so Pod Chat polls: the open chat every 2 s,
-  backing off by 1.4x to 12 s while quiet, other chats every 12 s up to 45 s, paused while the tab is hidden, reset
-  on send and on focus. The header badge says *Live* and, on hover, how often it looks. It is honest polling, not
-  fake push.
+* **Live updates.** Polling always works on its own, and the optional relay makes it fast. See *Live updates* below.
 * **Optimistic send.** A message shows at once (clock icon), is PUT to your pod, then confirmed. Failed sends show
   Retry and Discard.
 * **Read receipts** (a tiny file in the reader's pod) and *Seen* avatars under your latest read message.
@@ -60,6 +57,24 @@ alice's pod                          bob's pod
   quiet), then rewrites the container ACL to owner only. The pod then answers 403 for everyone else. Rejoin restores
   the grants. *Erase my copy* really deletes your messages.
 * **Pod view**: toggle in the info panel, tags each bubble with `~pod / file`.
+
+## Live updates
+
+* **Polling, always.** The pod engine has no notifications browsers can reach (see ENGINE-NOTES.md), so Pod Chat polls:
+  the open chat every 2 s, backing off by 1.4x to 12 s while quiet, other chats every 12 s up to 45 s, paused while the
+  tab is hidden, reset on send and on focus. The header badge says *Live* and, on hover, how often it looks.
+* **Push hints, optional.** With `VITE_RELAY_URL` set, the client also talks to the SKPods relay
+  ([`docs/CHAT-PROTOCOL.md`](../../../docs/CHAT-PROTOCOL.md)). Each new conversation carries a random relay room id in its
+  descriptor. After every write the author's client sends the room a ping that says only "something changed at URL X";
+  the others re-read that conversation from the pods at once. Someone who was offline gets the pings from their mailbox
+  when they reconnect. The relay never sees message text, titles or files, and a ping is only a hint: the client
+  still trusts nothing but what the pods return.
+* **Slower polling while live.** While every relay socket is up, the badge says *Live (push)* and polling slows to
+  15 s (open chat) and 30 s (others), up to 60 s and 120 s, as a safety net. If the relay is unset, refuses the login or
+  goes down, polling drops straight back to the normal pace above. Conversations created before the relay (no room id
+  in their descriptor) simply keep polling.
+* **Measured.** Against pods-dev with a local relay, a message reached the other person's engine about 1 to 1.2 s
+  after the author's PUT finished, with that engine on the slow relay timing (so polling alone would need 15 s or more).
 
 Vocabulary: `schema:Message`, `schema:text`, `schema:author`, `schema:dateCreated`, `schema:image` plus a few `skp:`
 terms in [`../../vocab/pod-chat.ttl`](../../vocab/pod-chat.ttl).
@@ -92,28 +107,40 @@ reach people whose pod accepts your WebID in its chat inbox (they must have open
 
 Relay (optional): set `VITE_RELAY_URL` (for example `wss://relay.example`) to receive "something changed" pings from
 the SKPods relay (`docs/CHAT-PROTOCOL.md`). While it is live the badge says *Live (push)* and polling slows down; if
-the relay is unset or down, Pod Chat polls exactly as before.
+the relay is unset or down, Pod Chat polls exactly as before. To try it locally, run the relay with
+`npx wrangler dev --port 8787` in a skpods-relay checkout and start the app with
+`VITE_RELAY_URL=ws://127.0.0.1:8787 npm run dev -w @skpods/pod-chat`.
 
 ### Tests
 
 ```bash
 npm test -w @skpods/pod-chat                      # unit: codec, merge, layout, backoff, compaction picks, relay client and wiring
-npm run test:integration -w @skpods/pod-chat      # engine against pods-dev, headless (5 tests, about 6 min)
+npm run test:integration -w @skpods/pod-chat      # engine against pods-dev, headless (5 tests, about 4 min)
 npm run test:e2e -w @skpods/pod-chat              # two real browsers through the Nextcloud login form (8 tests, about 4 min)
 # SKP_ORIGIN=http://localhost:5176 makes the headless suite send the browser's Origin header on every request
+
+# relay suite: also needs a local relay from the skpods-relay repo (Rust, wrangler); 3 more tests, about 1.5 min
+npx wrangler dev --port 8787                                       # terminal 1, in a skpods-relay checkout
+SKP_RELAY_URL=ws://127.0.0.1:8787 npm run test:integration -w @skpods/pod-chat   # terminal 2, in showcase/
 ```
+
+Without `SKP_RELAY_URL` the 3 relay tests are skipped.
 
 The integration suite proves, with real pods and real ACLs: the seeded history merges from three pods in order;
 invitation, join and first message; photo stored in the author's pod and fetchable by the reader; read receipt; edit;
 delete; leave (403 on the container, 200 on `left.ttl`, ghosts and system line on the reader); rejoin; archive
-rollup with no gap, and delete inside an archive; and a non-participant gets 403.
+rollup with no gap, and delete inside an archive; and a non-participant gets 403. With `SKP_RELAY_URL` it also proves,
+through a real relay and real DPoP-bound tokens: a message reaches the other engine by push within 3 s while its
+polling is on the slow relay timing; an offline member gets the ping from their mailbox on reconnect; and a proof made
+for one relay URL is refused (close 4401) on another, while the right proof is admitted.
 The e2e suite drives the same story through the UI and saves the screenshots below.
 
 ## Real vs mocked
 
 | Real against pods-dev | Not done or mocked |
 |---|---|
-| Browser Solid-OIDC login (code + PKCE + DPoP), refresh | No push: polling only (the engine's WebSocket source URL is in-cluster, unreachable from browsers) |
+| Browser Solid-OIDC login (code + PKCE + DPoP), refresh | No Solid notifications: the engine's WebSocket source URL is in-cluster, unreachable from browsers. Push comes only from the optional SKPods relay, and no public relay is deployed yet, so without `VITE_RELAY_URL` it is polling only |
+| Push hints through the SKPods relay, proven with a local `wrangler dev` relay and real pods-dev tokens | |
 | Every read and write, ACLs, Append-only inbox, photos | The demo cast and their display names are a built-in directory for the dw-* test pods |
 | Seed script through the agent flow | Leaving is cooperative for people who already read your messages: they may have copied them, and the engine cannot revoke that. The others' grants to the leaver are not revoked automatically |
 | | No reactions, replies, search inside a chat, typing indicators (by design), end-to-end encryption (pods are the access boundary, the server can read files) |

@@ -4,6 +4,10 @@ This is the contract between Pod Chat clients and the optional SKPods relay. Mes
 only in the authors' pods. The relay carries small hints that something changed, nothing more. With the relay down,
 Pod Chat behaves exactly as it does without one (polling).
 
+**Status:** wire protocol v1, implemented on both sides and proven end to end on 2026-11-24 against pods-dev with a
+local relay (`wrangler dev`, see `showcase/apps/pod-chat/test/integration/relay.test.ts`). No public relay is deployed
+yet.
+
 Frame examples for both sides to test against live in `showcase/apps/pod-chat/protocol/relay-v1.fixtures.json`. Each
 fixture is `{name, direction, frame, valid}`. Error fixtures and invalid client fixtures also carry an optional
 `"close": <int>`, the close code the relay must use for that frame.
@@ -75,6 +79,10 @@ Examples:
   `https://relay.example/v1/room/0123456789abcdef0123456789abcdef`.
 * Dialled `wss://relay.example/v1/me?w=<hex>`, `htu` is `https://relay.example/v1/me`.
 * Dialled `ws://localhost:8787/v1/me?w=<hex>`, `htu` is `https://localhost:8787/v1/me`.
+
+The last example is deliberate: a plain `ws://` dial still gets an `https` `htu`. The relay cannot see the
+scheme the client used (TLS may end in front of it), so one rule for every scheme keeps local development and
+production identical and spares the relay from guessing.
 
 The relay refuses a token whose `exp` has passed, a proof older than 60 seconds, a proof whose `jti` was seen before,
 a proof signed by a key other than the token's `cnf.jkt`, and a token whose issuer is not listed in the WebID profile.
