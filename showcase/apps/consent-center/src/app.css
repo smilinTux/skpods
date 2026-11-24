@@ -1,0 +1,2 @@
+body { background-image: radial-gradient(60rem 28rem at 85% -10%, rgb(var(--skp-brand) / 0.12), transparent 60%), radial-gradient(44rem 26rem at -10% 0%, rgb(var(--skp-warm) / 0.07), transparent 60%); }
+.glow-text { background: linear-gradient(120deg, rgb(var(--skp-brand)), rgb(var(--skp-warm))); -webkit-background-clip: text; background-clip: text; color: transparent; }
