@@ -49,6 +49,8 @@ async function dump(page: Page, id: string) {
 }
 const bubbles = (page: Page) => page.getByTestId('message')
 const bubble = (page: Page, text: string) => page.getByTestId('message').filter({ hasText: text })
+/** The clickable bubble itself: the message row spans the whole width, its centre is empty space. */
+const bubbleBtn = (page: Page, text: string) => bubble(page, text).locator('button').first()
 
 describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
   let server: ChildProcess | undefined
@@ -179,14 +181,14 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
     await expect.poll(() => bobPhoto.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), { timeout: 30_000 }).toBe(true)
     await shot(pb, 'desktop-photo')
     // edit
-    await bubble(pa, `Hello Bob ${run}`).click()
+    await bubbleBtn(pa, `Hello Bob ${run}`).click()
     await pa.getByTestId('edit').click()
     await pa.getByTestId('composer').fill(`Hello Bob ${run}, are you free tonight?`)
     await pa.getByTestId('composer').press('Enter')
     await bubble(pb, `are you free tonight?`).waitFor(WAIT)
     await pb.getByTestId('edited').first().waitFor(WAIT)
     // delete
-    await bubble(pa, `Hello Bob ${run}`).click()
+    await bubbleBtn(pa, `Hello Bob ${run}`).click()
     await pa.getByTestId('delete').click()
     await pa.getByTestId('delete-confirm').click()
     await pb.getByTestId('ghost-deleted').waitFor(WAIT)
@@ -203,7 +205,7 @@ describe.skipIf(!haveEnv)('Pod Chat in the browser', () => {
     // the pod itself now refuses Bob
     expect((await B.store.request(convUrl(A.root, convId))).status).toBe(403)
     await pb.getByTestId('system-left').waitFor(WAIT).catch(async (e) => { await dump(pb, convId); throw e })
-    await pb.getByTestId('ghost-hidden').waitFor(WAIT)
+    await pb.getByTestId('ghost-hidden').first().waitFor(WAIT)
     await expect.poll(() => (bubble(pb, `Our house ${run}`)).count(), WAIT).toBe(0)
     await expect.poll(() => (bubble(pb, `Hi Alice ${run}`)).count(), WAIT).toBe(1) // Bob's own words stay
     await shot(pb, 'desktop-after-leave')
