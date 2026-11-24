@@ -116,7 +116,8 @@ describe.skipIf(!have)('receipts wallet story on pods-dev', () => {
     // the wallet moved them from the inbox to the archive
     const { store: aliceStore } = await agent('ALICE')
     for (const key of ['dw-practitioner', 'dw-care-facility', 'dw-bob', 'dw-agent']) {
-      expect((await aliceStore.list(inboxOf(key))).length, `inbox ${key}`).toBe(0)
+      // the delete after filing can lag a poll behind on this engine: allow the wallet a moment to finish
+      await expect.poll(async () => (await aliceStore.list(inboxOf(key))).length, { timeout: 30_000, interval: 2_000, message: `inbox ${key}` }).toBe(0)
       expect((await aliceStore.list(archiveOf(key))).length, `archive ${key}`).toBeGreaterThan(3)
     }
   })

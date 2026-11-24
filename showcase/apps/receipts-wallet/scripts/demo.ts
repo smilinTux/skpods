@@ -8,7 +8,7 @@
 // The env files provide SKPODS_BASE and DW_<USER>_USER plus either DW_<USER>_CLIENT_ID / _CLIENT_SECRET or _PASSWORD
 // (a password is used once to mint client credentials). Nothing here prints a secret.
 import fs from 'node:fs'
-import { PodStore } from '@skpods/solid-web'
+import { ResilientStore } from '../src/lib/resilient'
 import { agentLogin, mintClientCredentials, type AgentSession } from '@skpods/solid-web/node'
 import { DEMO_BUSINESSES, DEMO_RECEIPTS, PRESETS } from '../src/lib/demo-data'
 import { buildReceiptTurtle, receiptSlug, type ReceiptInput } from '../src/lib/receipt'
@@ -46,9 +46,9 @@ async function login(envKey: string, fallbackUser?: string): Promise<AgentSessio
   return s
 }
 
-async function walletFor(envKey: string): Promise<{ store: PodStore; wallet: Wallet; webId: string }> {
+async function walletFor(envKey: string): Promise<{ store: ResilientStore; wallet: Wallet; webId: string }> {
   const s = await login(envKey)
-  const store = new PodStore(s.fetch)
+  const store = new ResilientStore(s.fetch)
   const storage = await store.storageRoot(s.webId)
   if (!storage) throw new Error('No pim:storage in the customer profile')
   return { store, wallet: { owner: s.webId, paths: pathsFor(storage) }, webId: s.webId }
@@ -82,7 +82,7 @@ async function seed() {
   await Promise.all(
     DEMO_BUSINESSES.map(async (b) => {
       const s = sessionsByBiz.get(b.id)!
-      const biz = new PodStore(s.fetch)
+      const biz = new ResilientStore(s.fetch)
       for (const r of DEMO_RECEIPTS.filter((x) => x.business === b.id)) {
         const input: ReceiptInput = {
           kind: r.kind,
@@ -118,7 +118,7 @@ async function issue() {
   if (!biz) throw new Error(`--as must be one of ${DEMO_BUSINESSES.map((b) => b.id).join(', ')}`)
   const customer = await login(opt('to') ?? 'ALICE')
   const s = await login(biz.envKey, biz.user)
-  const store = new PodStore(s.fetch)
+  const store = new ResilientStore(s.fetch)
   const storage = await store.storageRoot(customer.webId)
   const w: Wallet = { owner: customer.webId, paths: pathsFor(storage!) }
   const preset = PRESETS[Number(opt('preset') ?? 0)] ?? PRESETS[0]

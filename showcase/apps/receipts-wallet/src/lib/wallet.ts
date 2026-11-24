@@ -214,7 +214,7 @@ export async function loadReceipts(store: PodStore, w: Wallet, businesses: Busin
   const skipped: string[] = []
   const found = new Map<string, Receipt>() // business/file -> receipt (archive wins)
 
-  await pool(businesses, 4, async (b) => {
+  await pool(businesses, 2, async (b) => {
     const [inboxItems, archiveItems] = await Promise.all([store.list(inboxOf(w, b.key)), store.list(archiveOf(w, b.key))])
     const archived = new Set(archiveItems.filter((e) => !e.isContainer).map((e) => fileOf(e.url)))
     const readOne = async (url: string): Promise<Receipt | undefined> => {
@@ -229,17 +229,17 @@ export async function loadReceipts(store: PodStore, w: Wallet, businesses: Busin
       cache.set(url, rec)
       return rec
     }
-    const archivedRecs = await pool(archiveItems.filter((e) => !e.isContainer), 6, (e) => readOne(e.url).catch((err) => (skipped.push(`${e.url}: ${(err as Error).message}`), undefined)))
+    const archivedRecs = await pool(archiveItems.filter((e) => !e.isContainer), 4, (e) => readOne(e.url).catch((err) => (skipped.push(`${e.url}: ${(err as Error).message}`), undefined)))
     for (const r of archivedRecs) if (r) found.set(`${b.key}/${r.file}`, r)
 
-    await pool(inboxItems.filter((e) => !e.isContainer), 6, async (e) => {
+    await pool(inboxItems.filter((e) => !e.isContainer), 4, async (e) => {
       const file = fileOf(e.url)
       try {
         const rec = await readOne(e.url)
         if (!rec) return
         if (archived.has(file)) {
           // Already filed on an earlier run whose delete failed: just clean the inbox.
-          if (opts.file) await store.delete(e.url).catch(() => false)
+          if (opts.file) await retry(() => store.delete(e.url)).catch(() => false)
           return
         }
         if (opts.file) {
@@ -247,7 +247,7 @@ export async function loadReceipts(store: PodStore, w: Wallet, businesses: Busin
           await retry(() => store.put(dest, rec.raw))
           const moved: Receipt = { ...rec, url: dest }
           cache.set(dest, moved)
-          await store.delete(e.url).catch(() => false)
+          await retry(() => store.delete(e.url)).catch(() => false)
           filed.push(moved)
           found.set(`${b.key}/${file}`, moved)
         } else found.set(`${b.key}/${file}`, rec)

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { PodStore, type SolidSession } from '@skpods/solid-web'
+import type { SolidSession } from '@skpods/solid-web'
+import { ResilientStore } from './resilient'
 import { useToast } from '@skpods/ui'
 import { money } from './format'
 import type { Receipt } from './receipt'
@@ -11,7 +12,7 @@ const POLL_MS = 7000
 
 export function useWallet(session: SolidSession) {
   const { toast } = useToast()
-  const store = useMemo(() => new PodStore(session.fetch), [session])
+  const store = useMemo(() => new ResilientStore(session.fetch), [session])
   const webId = session.webId!
   const [phase, setPhase] = useState<Phase>('loading')
   const [error, setError] = useState<unknown>()
