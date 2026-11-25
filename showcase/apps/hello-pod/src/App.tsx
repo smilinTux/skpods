@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { NS, PodStore, SolidSession, one, type ContainerEntry } from '@skpods/solid-web'
-import { AppShell, Avatar, Button, Card, EmptyState, ErrorState, Skeleton, ToastProvider, useToast } from '@skpods/ui'
-
-const DEFAULT_ISSUER = import.meta.env.VITE_POD_ISSUER ?? 'https://pods-dev.skstack01.douno.it'
+import { DEFAULT_ISSUER, NS, PodStore, SolidSession, one, type ContainerEntry } from '@skpods/solid-web'
+import { AppShell, Avatar, Button, Card, EmptyState, ErrorState, PodSignIn, Skeleton, ToastProvider, useRememberAccount, useToast } from '@skpods/ui'
 
 function useSession() {
   const [session, setSession] = useState<SolidSession>()
@@ -109,40 +107,20 @@ function Signed({ session }: { session: SolidSession }) {
         </>
       )}
       <Card title="Session" subtitle="DPoP-bound token, refreshed automatically" className="md:col-span-2">
-        <p className="text-sm text-muted">Issuer <span className="font-mono">{session.issuer}</span>. Requests carry <span className="font-mono">Authorization: DPoP</span> plus a proof per call.</p>
+        <p className="text-sm text-muted">Signed in through <span className="font-mono">{session.issuer}</span>. Requests carry <span className="font-mono">Authorization: DPoP</span> plus a proof per call.</p>
       </Card>
     </div>
   )
 }
 
-function Welcome({ session, expired }: { session: SolidSession; expired: boolean }) {
-  const [issuer, setIssuer] = useState(DEFAULT_ISSUER)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string>()
-  const go = async () => {
-    setBusy(true)
-    setErr(undefined)
-    try {
-      await session.login(issuer)
-    } catch (e) {
-      setErr((e as Error).message)
-      setBusy(false)
-    }
-  }
+function Welcome({ session }: { session: SolidSession }) {
   return (
     <div className="mx-auto mt-10 max-w-md">
       <Card glow>
         <div className="space-y-4 text-center">
           <h1 className="text-2xl font-bold tracking-tight">Hello, pod.</h1>
-          <p className="text-sm text-muted">Log in with the identity provider that hosts your Solid pod. Your data stays there; this app only visits.</p>
-          {expired && <p role="status" className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">Your session ended. Log in again to continue.</p>}
-          {session.error && !expired && <ErrorState title="Login problem" error={session.error} />}
-          <label className="block text-left text-sm font-medium">
-            Identity provider
-            <input value={issuer} onChange={(e) => setIssuer(e.target.value)} className="mt-1 w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-sm" inputMode="url" autoComplete="url" data-testid="issuer" />
-          </label>
-          {err && <ErrorState error={err} />}
-          <Button className="w-full" loading={busy} onClick={go} data-testid="login">Log in</Button>
+          <p className="text-sm text-muted">Sign in with your pod. Your data stays there; this app only visits.</p>
+          <PodSignIn session={session} />
         </div>
       </Card>
     </div>
@@ -162,6 +140,7 @@ function Inner() {
   const session = useSession()
   const active = Boolean(session && session.state === 'active' && session.webId)
   const name = useProfileName(session, active ? session!.webId : undefined)
+  useRememberAccount(session)
   if (!session) return <div className="flex min-h-screen items-center justify-center text-muted"><Skeleton className="h-10 w-48" /></div>
   return (
     <AppShell
@@ -171,7 +150,7 @@ function Inner() {
       onLogout={active ? () => session.logout() : undefined}
       widthClass="max-w-4xl"
     >
-      {active ? <Signed session={session} /> : <Welcome session={session} expired={session.state === 'expired'} />}
+      {active ? <Signed session={session} /> : <Welcome session={session} />}
     </AppShell>
   )
 }

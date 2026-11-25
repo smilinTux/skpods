@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SolidSession } from '@skpods/solid-web'
-import { AppShell, Avatar, Button, Card, ErrorState, Skeleton, ToastProvider, cx, useToast } from '@skpods/ui'
-import { ISSUER } from './config'
+import { AppShell, Avatar, Button, Card, ErrorState, PodSignIn, Skeleton, ToastProvider, cx, useRememberAccount, useToast } from '@skpods/ui'
 import { Broker } from './lib/broker'
 import { discoverPeople } from './lib/people'
 import { findBookingEnd } from './lib/pod'
@@ -26,20 +25,7 @@ function parseSpan(s: string): number {
   return m ? Number(m[1]) * { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[m[2] as 's'] : 30 * 86400
 }
 
-function Welcome({ session, expired }: { session: SolidSession; expired: boolean }) {
-  const [issuer, setIssuer] = useState(ISSUER)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string>()
-  const go = async () => {
-    setBusy(true)
-    setErr(undefined)
-    try {
-      await session.login(issuer)
-    } catch (e) {
-      setErr((e as Error).message)
-      setBusy(false)
-    }
-  }
+function Welcome({ session }: { session: SolidSession }) {
   return (
     <div className="mx-auto mt-6 max-w-2xl text-center sm:mt-12">
       <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-navy-900 shadow-glow">
@@ -53,14 +39,7 @@ function Welcome({ session, expired }: { session: SolidSession; expired: boolean
       </p>
       <Card glow className="mx-auto mt-8 max-w-md text-left">
         <div className="space-y-4">
-          {expired && <p role="status" className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">Your session ended. Log in again to continue.</p>}
-          {session.error && !expired && <ErrorState title="Login problem" error={session.error} />}
-          <label className="block text-sm font-medium">
-            Where your pod lives
-            <input value={issuer} onChange={(e) => setIssuer(e.target.value)} className="mt-1 w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-sm" inputMode="url" autoComplete="url" data-testid="issuer" />
-          </label>
-          {err && <ErrorState error={err} />}
-          <Button className="w-full" loading={busy} onClick={go} data-testid="login">Log in with your pod</Button>
+          <PodSignIn session={session} />
           <p className="text-xs text-muted">Standard Solid-OIDC with DPoP. Nothing about you is stored by this app: the files are in your pod.</p>
         </div>
       </Card>
@@ -282,12 +261,12 @@ function Cockpit({ session }: { session: SolidSession }) {
 
 function Inner() {
   const session = useSession({ clientName: 'Consent Center (SKPods showcase)', db: 'skpods-consent-center' })
+  useRememberAccount(session)
   if (!session) return <div className="flex min-h-screen items-center justify-center"><Skeleton className="h-10 w-48" /></div>
   if (isActive(session)) return <Cockpit session={session} />
-  const expired = session.state === 'expired'
   return (
     <AppShell appName="Consent Center" tagline="Every request for your data, in one calm place" widthClass="max-w-4xl">
-      <Welcome session={session} expired={expired} />
+      <Welcome session={session} />
     </AppShell>
   )
 }

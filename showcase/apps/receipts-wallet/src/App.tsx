@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { NS, PodStore, SolidSession, one } from '@skpods/solid-web'
-import { AppShell, Button, Card, ErrorState, Skeleton, ToastProvider, cx } from '@skpods/ui'
+import { DEFAULT_ISSUER, NS, PodStore, SolidSession, one } from '@skpods/solid-web'
+import { AppShell, Button, Card, ErrorState, PodSignIn, Skeleton, ToastProvider, cx, useRememberAccount } from '@skpods/ui'
 import { Businesses } from './components/Businesses'
 import { Console } from './components/Console'
 import { ExportTab } from './components/ExportTab'
@@ -8,8 +8,6 @@ import { Icon } from './components/bits'
 import { Receipts } from './components/Receipts'
 import { NO_FILTERS, type Filters } from './lib/filter'
 import { useWallet } from './lib/useWallet'
-
-const DEFAULT_ISSUER = import.meta.env.VITE_POD_ISSUER ?? 'https://pods-dev.skstack01.douno.it'
 
 function useSession() {
   const [session, setSession] = useState<SolidSession>()
@@ -38,20 +36,7 @@ function useProfileName(session: SolidSession | undefined, webId?: string) {
 type Mode = 'wallet' | 'console'
 type Tab = 'receipts' | 'businesses' | 'export'
 
-function Welcome({ session, expired }: { session: SolidSession; expired: boolean }) {
-  const [issuer, setIssuer] = useState(DEFAULT_ISSUER)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string>()
-  const go = async () => {
-    setBusy(true)
-    setErr(undefined)
-    try {
-      await session.login(issuer)
-    } catch (e) {
-      setErr((e as Error).message)
-      setBusy(false)
-    }
-  }
+function Welcome({ session }: { session: SolidSession }) {
   return (
     <div className="mx-auto mt-6 max-w-lg sm:mt-12">
       <Card glow>
@@ -61,15 +46,8 @@ function Welcome({ session, expired }: { session: SolidSession; expired: boolean
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Every receipt you ever got, in one place you own.</h1>
           <p className="text-sm text-muted">Businesses drop receipts into your pod and can never read them back. You keep them forever, even after you switch provider. Search them, total them, take them with you.</p>
-          {expired && <p role="status" className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">Your session ended. Log in again to continue.</p>}
-          {session.error && !expired && <ErrorState title="Login problem" error={session.error} />}
-          <label className="block text-left text-sm font-medium">
-            Identity provider
-            <input value={issuer} onChange={(e) => setIssuer(e.target.value)} className="mt-1 w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-sm" inputMode="url" autoComplete="url" data-testid="issuer" />
-          </label>
-          {err && <ErrorState error={err} />}
-          <Button className="w-full" loading={busy} onClick={go} data-testid="login">Log in with your pod</Button>
-          <p className="text-xs text-muted">Customer or business, you log in the same way. After login, switch between <strong>My wallet</strong> and <strong>Business console</strong>.</p>
+          <PodSignIn session={session} />
+          <p className="text-xs text-muted">Customer or business, you sign in the same way. After that, switch between <strong>My wallet</strong> and <strong>Business console</strong>.</p>
         </div>
       </Card>
     </div>
@@ -130,6 +108,7 @@ function Inner() {
   const session = useSession()
   const active = Boolean(session && session.state === 'active' && session.webId)
   const name = useProfileName(session, active ? session!.webId : undefined)
+  useRememberAccount(session)
   const [mode, setModeState] = useState<Mode>(() => {
     try {
       if (sessionStorage.getItem('receipts-wallet:mode') === 'console') return 'console'
@@ -168,7 +147,7 @@ function Inner() {
           <div hidden={mode !== 'console'}><Console session={session} /></div>
         </>
       ) : (
-        <Welcome session={session} expired={session.state === 'expired'} />
+        <Welcome session={session} />
       )}
     </AppShell>
   )

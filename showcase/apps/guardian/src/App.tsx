@@ -1,5 +1,5 @@
 import { SolidSession } from '@skpods/solid-web'
-import { AppShell, Button, Card, Skeleton, ToastProvider, useToast, type NavItem } from '@skpods/ui'
+import { AppShell, Button, Card, Skeleton, ToastProvider, useRememberAccount, useToast, type NavItem } from '@skpods/ui'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { POD_ISSUER } from './config'
 import { usePresenter, type StageControls } from './lib/presenter'
@@ -147,9 +147,10 @@ function AuditPage() {
 
 function Inner() {
   const session = useSession()
+  useRememberAccount(session)
   if (!session) return <div className="flex min-h-screen items-center justify-center"><Skeleton className="h-10 w-48" /></div>
   const active = session.state === 'active' && Boolean(session.webId)
-  return active ? <Signed session={session} /> : <Welcome session={session} expired={session.state === 'expired'} />
+  return active ? <Signed session={session} /> : <Welcome session={session} />
 }
 
 export function App() {
