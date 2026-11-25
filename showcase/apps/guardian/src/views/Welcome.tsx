@@ -1,9 +1,7 @@
-import { Button, ErrorState, ThemeToggle } from '@skpods/ui'
-import { useState } from 'react'
+import { PodSignIn, ThemeToggle } from '@skpods/ui'
 import type { SolidSession } from '@skpods/solid-web'
 import { BrandMark } from '@skpods/ui'
-import { POD_ISSUER } from '../config'
-import { BoltIcon, ClockIcon, LinkIcon, LockIcon, ShieldIcon } from '../ui'
+import { BoltIcon, ClockIcon, LinkIcon, ShieldIcon } from '../ui'
 
 const STEPS = [
   { icon: <BoltIcon size={20} />, title: 'Rules, not vibes', body: 'You write plain-language rules in your own pod: auto, ask me, or never, per kind of data and kind of requester.' },
@@ -11,20 +9,7 @@ const STEPS = [
   { icon: <LinkIcon size={20} />, title: 'Provable afterwards', body: 'Every ask, decision and read goes into a hash chain you can verify yourself. One red button ends everything.' },
 ]
 
-export function Welcome({ session, expired }: { session: SolidSession; expired: boolean }) {
-  const [issuer, setIssuer] = useState(POD_ISSUER)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string>()
-  const go = async () => {
-    setBusy(true)
-    setErr(undefined)
-    try {
-      await session.login(issuer)
-    } catch (e) {
-      setErr((e as Error).message)
-      setBusy(false)
-    }
-  }
+export function Welcome({ session }: { session: SolidSession }) {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_34rem_at_50%_0%,rgb(var(--skp-brand)/.22),transparent_70%)]" aria-hidden />
@@ -49,16 +34,10 @@ export function Welcome({ session, expired }: { session: SolidSession; expired: 
                 <span className="ring" /><span className="ring" style={{ animationDelay: '1.2s' }} /><ShieldIcon size={38} />
               </div>
               <div className="text-center">
-                <h2 className="text-lg font-bold">Log in as Alice</h2>
-                <p className="mt-1 text-sm text-muted">Sign in with your pod provider. This demo runs against a Solid server holding fake data only.</p>
+                <h2 className="text-lg font-bold">Sign in as Alice</h2>
+                <p className="mt-1 text-sm text-muted">This demo runs against a Solid server holding fake data only.</p>
               </div>
-              {expired && <p role="status" className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">Your session ended. Log in again to continue.</p>}
-              {session.error && !expired && <ErrorState title="Login problem" error={session.error} />}
-              <label className="block text-left text-xs font-medium text-muted">Identity provider
-                <input value={issuer} onChange={(e) => setIssuer(e.target.value)} className="mt-1 w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-ink" inputMode="url" data-testid="issuer" />
-              </label>
-              {err && <ErrorState error={err} />}
-              <Button className="w-full !py-3" loading={busy} onClick={go} data-testid="login"><LockIcon size={16} /> Log in</Button>
+              <PodSignIn session={session} />
             </div>
           </div>
         </div>

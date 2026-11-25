@@ -14,8 +14,8 @@ Shared code:
 
 | Package | Purpose |
 |---|---|
-| `packages/solid-web` | TypeScript library: Solid-OIDC login for browsers (discovery, dynamic client registration, code + PKCE, DPoP, refresh, restore, logout), a DPoP `fetch`, a Node client-credentials login for agents and tests, `PodStore` (get, put, post, N3 patch, delete, list, containers, type index), Turtle read and write with `n3`, WAC helpers, a polling watcher. **Read `packages/solid-web/ENGINE-NOTES.md` first**: it lists what the engine really does, including the behaviours apps must design around. |
-| `packages/ui` | Design system: Tailwind preset (deep navy, teal glow, warm accent, light and dark) and React components: `AppShell`, `Card`, `Button`, `ConsentChip`, `Countdown`, `AuditTimeline`, `Avatar`, `ToastProvider`, `EmptyState`, `ErrorState`, `Skeleton`, `ThemeToggle`. |
+| `packages/solid-web` | TypeScript library: sign-in resolution (`resolvePodInput`, remembered accounts, `DEFAULT_ISSUER`), Solid-OIDC login for browsers (discovery, dynamic client registration, code + PKCE, DPoP, refresh, restore, logout), a DPoP `fetch`, a Node client-credentials login for agents and tests, `PodStore` (get, put, post, N3 patch, delete, list, containers, type index), Turtle read and write with `n3`, WAC helpers, a polling watcher. **Read `packages/solid-web/ENGINE-NOTES.md` first**: it lists what the engine really does, including the behaviours apps must design around. |
+| `packages/ui` | Design system: Tailwind preset (deep navy, teal glow, warm accent, light and dark) and React components: `PodSignIn`, `AppShell`, `Card`, `Button`, `ConsentChip`, `Countdown`, `AuditTimeline`, `Avatar`, `ToastProvider`, `EmptyState`, `ErrorState`, `Skeleton`, `ThemeToggle`. |
 | `vocab/skpods-showcase.ttl` | Terms in `https://w3id.org/skpods/v1#` (prefix `skp:`) used by the apps. Reuse schema.org, vcard, FOAF and Solid terms first. |
 
 Pod paths used by the apps live under `<storage>/skpods/v1/` (for example `consents/`, `health/`, `receipts/`, `chat/`). Find the storage root from the WebID profile (`pim:storage`) and data containers through the Type Index; never build paths from the WebID by string concatenation.
@@ -30,7 +30,15 @@ npm install
 npm run dev:hello          # http://localhost:5173  (port is fixed: the OIDC redirect URI is registered for it)
 ```
 
-Open it, press Log in, sign in at the Nextcloud form with a test account and press Allow on the consent screen. Test accounts are fake and not in this repository.
+Open it, press **Sign in with skpods.id**, sign in at the Nextcloud form with a test account and press Allow on the consent screen. Test accounts are fake and not in this repository.
+
+### Signing in
+
+Every app uses the same sign-in block, `PodSignIn` from `@skpods/ui`. Nobody types a server URL in the default case:
+
+- **Sign in with skpods.id**: one big button that signs in at `DEFAULT_ISSUER` from `@skpods/solid-web`. That is the only place the default provider is set (`VITE_POD_ISSUER` overrides it at build time). Today it is the dev server; it moves to the production skpods.id server later.
+- **Use a different pod**: a quiet link that opens one field. It accepts a WebID (the profile's `solid:oidcIssuer` is used), a handle such as `alex@pods.example.com` (WebFinger, then the host itself), or a server address such as `pods.example.com` (used if its OpenID discovery answers). The logic is `resolvePodInput` in `packages/solid-web/src/signin.ts`.
+- **Continue as ...**: after a sign-in the account (WebID, sign-in server, profile name) is remembered in this browser's localStorage, and the next visit offers it above the big button, with a button to forget it. Apps call `useRememberAccount(session)` once. One account is signed in at a time; the list is keyed by WebID so it can grow into a pod picker.
 
 ### Use the library
 
@@ -68,7 +76,7 @@ The env file holds `SKPODS_BASE` and `DW_<USER>_USER` / `DW_<USER>_PASSWORD` for
 
 | Suite | What it proves |
 |---|---|
-| `test/unit` | DPoP proofs for RS256 and ES256 verify, `ath`, `htu`, nonce retry and refresh retry, token not sent cross-origin, Turtle, ACL parse and serialise, lockout guard |
+| `test/unit` | Sign-in resolution (WebID, handle via WebFinger and fallback, bare host, https upgrade, friendly errors) and remembered accounts (including storage that throws), DPoP proofs for RS256 and ES256 verify, `ath`, `htu`, nonce retry and refresh retry, token not sent cross-origin, Turtle, ACL parse and serialise, lockout guard |
 | `test/integration/browser-login` | Playwright drives the real Nextcloud login form and consent screen for a test account through Hello Pod: login, WebID and pod root shown, private container written and listed, session restored after reload, refresh with an aged token, logout |
 | `test/integration/agent` | Client-credentials login, token claims, profile and type index discovery, put, get, patch, list, delete, nested containers, type index registration, 403 on another user's private area |
 | `test/integration/wac` | A test user shares a resource with another through `.acl`, the grantee can read but not write, revoke gives 403 again; container default inheritance; Append-only inbox; engine quirks |

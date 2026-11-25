@@ -1,5 +1,5 @@
-import { PodStore, SolidSession, safeLocal, NS, one } from '@skpods/solid-web'
-import { Button, Card, ErrorState, Skeleton, ToastProvider, useToast } from '@skpods/ui'
+import { DEFAULT_ISSUER, PodStore, SolidSession, safeLocal, NS, one } from '@skpods/solid-web'
+import { Button, Card, ErrorState, PodSignIn, Skeleton, ToastProvider, useRememberAccount, useToast } from '@skpods/ui'
 import { useEffect, useMemo, useState } from 'react'
 import { ChatEngine } from './lib/engine'
 import { demoCast } from './lib/people'
@@ -10,7 +10,6 @@ import { Chat, Lock } from './ui/icons'
 import { NewChat } from './ui/NewChat'
 import { useEngine, useHashRoute } from './ui/useEngine'
 
-const DEFAULT_ISSUER = import.meta.env.VITE_POD_ISSUER ?? 'https://pods-dev.skstack01.douno.it'
 const RELAY_URL = (import.meta.env.VITE_RELAY_URL as string | undefined) || undefined
 
 function useSession() {
@@ -27,20 +26,7 @@ function useSession() {
   return session
 }
 
-function Welcome({ session, expired }: { session: SolidSession; expired: boolean }) {
-  const [issuer, setIssuer] = useState(DEFAULT_ISSUER)
-  const [busy, setBusy] = useState(false)
-  const [err, setErr] = useState<string>()
-  const go = async () => {
-    setBusy(true)
-    setErr(undefined)
-    try {
-      await session.login(issuer)
-    } catch (e) {
-      setErr((e as Error).message)
-      setBusy(false)
-    }
-  }
+function Welcome({ session }: { session: SolidSession }) {
   return (
     <div className="flex h-full items-center justify-center overflow-y-auto p-4">
       <div className="w-full max-w-md">
@@ -54,14 +40,7 @@ function Welcome({ session, expired }: { session: SolidSession; expired: boolean
               <li className="flex gap-2"><Lock width={16} height={16} className="mt-0.5 shrink-0 text-brand" /> Photos are stored in your pod too, and shared the same way.</li>
               <li className="flex gap-2"><Lock width={16} height={16} className="mt-0.5 shrink-0 text-brand" /> Leaving revokes access. Your messages vanish for everyone else.</li>
             </ul>
-            {expired && <p role="status" className="rounded-lg bg-warn/10 px-3 py-2 text-sm text-warn">Your session ended. Log in again to continue.</p>}
-            {session.error && !expired && <ErrorState title="Login problem" error={session.error} />}
-            <label className="block text-left text-sm font-medium">
-              Identity provider
-              <input value={issuer} onChange={(e) => setIssuer(e.target.value)} className="mt-1 w-full rounded-xl border border-line bg-surface-2 px-3 py-2 font-mono text-sm" inputMode="url" autoComplete="url" data-testid="issuer" />
-            </label>
-            {err && <ErrorState error={err} />}
-            <Button className="w-full" loading={busy} onClick={go} data-testid="login">Log in with your pod</Button>
+            <PodSignIn session={session} />
           </div>
         </Card>
       </div>
@@ -184,9 +163,10 @@ function Signed({ session }: { session: SolidSession }) {
 
 function Inner() {
   const session = useSession()
+  useRememberAccount(session)
   if (!session) return <div className="flex h-full items-center justify-center"><Skeleton className="h-10 w-48" /></div>
   const active = session.state === 'active' && session.webId
-  return active ? <Signed session={session} /> : <Welcome session={session} expired={session.state === 'expired'} />
+  return active ? <Signed session={session} /> : <Welcome session={session} />
 }
 
 export function App() {

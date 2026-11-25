@@ -1,4 +1,7 @@
-export const POD_ISSUER = import.meta.env?.VITE_POD_ISSUER ?? 'https://pods-dev.skstack01.douno.it'
+import { DEFAULT_ISSUER } from '@skpods/solid-web'
+
+/** The shared default pod provider (VITE_POD_ISSUER overrides it at build time). */
+export const POD_ISSUER = DEFAULT_ISSUER
 /** Where sk-consent (the broker and guardian) listens. Must equal its SKCONSENT_PUBLIC_URL: DPoP proofs are bound to it. */
 export const CONSENT_URL = (import.meta.env?.VITE_CONSENT_URL ?? 'http://127.0.0.1:8782').replace(/\/$/, '')
 /** The clinic bridge: a small Node dev tool that plays Bayview Family Clinic with its own credentials. */
