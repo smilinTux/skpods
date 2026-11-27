@@ -56,6 +56,7 @@ Phases: 0 pre-flight auth hardening (done on our build), 1 `pods-dev` live, 2 `s
 | [docs/ACCESS-AND-CONSENT.md](./docs/ACCESS-AND-CONSENT.md) | WAC, time-limited grants, the consent broker, audit log. |
 | [docs/CONFORMANCE.md](./docs/CONFORMANCE.md) | The conformance gate and how we track Solid compatibility. |
 | [docs/COMMUNITY.md](./docs/COMMUNITY.md) | How we work with the Solid community. |
+| [docs/POD-LOCATIONS.md](./docs/POD-LOCATIONS.md) | Where pod files can live (S3, Google Drive, OneDrive, home pods) behind one WebID. |
 | [sdk/dotnet/](./sdk/dotnet/) | .NET `PodStore` interface, DPoP client stub, example. |
 | [sdk/rust/sk-solid/](./sdk/rust/sk-solid/) | Rust crate skeleton for the CLI and library. |
 | [sdk/http/](./sdk/http/) | Raw curl/HTTP examples. |
